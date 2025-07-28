@@ -1,17 +1,31 @@
 # This python early block defines the core data structure for all characters.
 # Placing it here ensures it's loaded before other scripts that use it.
 python early:
+    # This dictionary stores the total XP needed to reach the start of each level.
+    xp_thresholds = {
+        1: 0, 2: 300, 3: 900, 4: 2700, 5: 6500, 6: 14000, 7: 23000,
+        8: 34000, 9: 48000, 10: 64000, 11: 85000, 12: 100000, 13: 120000,
+        14: 140000, 15: 165000, 16: 195000, 17: 225000, 18: 265000,
+        19: 305000, 20: 355000
+    }
+
+    # NEW: This dictionary stores the total Skill XP required to reach a given skill level.
+    skill_level_costs = {
+        1: 0, 2: 100, 3: 300, 4: 600, 5: 1000, 6: 1500, 7: 2100, 8: 2800, 9: 3600, 10: 4500
+    }
+
     # We define a Python class to hold all the character's TTRPG stats.
-    # This can be used for the Player and for all NPCs.
     class CharacterStats:
         def __init__(self, name, hp, ac, str, dex, con, intl, wis, cha):
             self.name = name
 
-            # Base stats that should not change after character creation.
+            # Base stats
             self.base_max_hp = hp
             self.base_ac = ac
+            self.base_atk_bonus = 0
+            self.base_dmg_bonus = 0
 
-            # d20 Core Attributes
+            # Core Attributes
             self.strength = str
             self.dexterity = dex
             self.constitution = con
@@ -19,84 +33,134 @@ python early:
             self.wisdom = wis
             self.charisma = cha
 
-            # Current, calculated stats that will be modified by effects.
+            # Current, calculated stats
             self.max_hp = self.base_max_hp
-            self.hp = self.base_max_hp # Start with full health
+            self.hp = self.base_max_hp
             self.ac = self.base_ac
+            self.atk_bonus = self.base_atk_bonus
+            self.dmg_bonus = self.base_dmg_bonus
 
-            # --- INVENTORY OVERHAUL ---
-            # The inventory is now a dictionary to handle item stacks.
-            # The key is the item's unique ID (from item_database), and the value is the quantity.
+            # Inventory and Equipment
             self.inventory = {}
-            # Equipped items remains a list of the actual Item objects.
             self.equipped_items = []
 
-        # NEW: The primary function for adding items to the inventory.
+            # XP and Leveling
+            self.level = 1
+            self.base_xp = 0
+            self.skill_xp = 0
+            self.proficiency_bonus = 2
+            
+            # Learned Skills
+            self.learned_skills = {} # Stores skill IDs and their current level, e.g., {"new_kid_in_town": 1}
+            self.active_skills = [] # A list of skill IDs that are currently toggled on.
+
+        # --- SKILL FUNCTIONS ---
+        def learn_skill(self, skill_id):
+            if skill_id not in self.learned_skills:
+                self.learned_skills[skill_id] = 1
+                self.active_skills.append(skill_id) # Activate skill by default when learned
+                self.recalculate_stats()
+
+        def toggle_skill(self, skill_id):
+            if skill_id in self.active_skills:
+                self.active_skills.remove(skill_id)
+            elif skill_id in self.learned_skills:
+                self.active_skills.append(skill_id)
+            self.recalculate_stats()
+        
+        # NEW: Helper function to get the cost for the next level of a skill.
+        def get_skill_upgrade_cost(self, skill_id):
+            if skill_id in self.learned_skills:
+                current_level = self.learned_skills[skill_id]
+                skill = skill_database[skill_id]
+                if current_level < skill.max_level:
+                    return skill_level_costs.get(current_level + 1)
+            return None # Return None if skill is max level or not learned
+
+        def level_up_skill(self, skill_id):
+            cost = self.get_skill_upgrade_cost(skill_id)
+            # Check if the skill can be leveled up and if the player has enough total Skill XP.
+            if cost is not None and self.skill_xp >= cost:
+                self.learned_skills[skill_id] += 1
+                self.recalculate_stats()
+
+        # --- STAT RECALCULATION ---
+        def recalculate_stats(self):
+            # 1. Reset stats to their base values
+            self.max_hp = self.base_max_hp
+            self.ac = self.base_ac
+            self.atk_bonus = self.base_atk_bonus
+            self.dmg_bonus = self.base_dmg_bonus
+
+            # 2. Apply effects from equipped items
+            for item in self.equipped_items:
+                if "ac_bonus" in item.effects: self.ac += item.effects["ac_bonus"]
+                if "atk_bonus" in item.effects: self.atk_bonus += item.effects["atk_bonus"]
+                if "dmg_bonus" in item.effects: self.dmg_bonus += item.effects["dmg_bonus"]
+                if "max_hp_percent_bonus" in item.effects:
+                    self.max_hp += int(self.base_max_hp * item.effects["max_hp_percent_bonus"])
+
+            # 3. Apply effects from active skills
+            for skill_id in self.active_skills:
+                if skill_id in self.learned_skills:
+                    skill = skill_database[skill_id]
+                    level = self.learned_skills[skill_id]
+                    # Calculate total bonus: base + (per_level * (level - 1))
+                    for effect, base_value in skill.base_effects.items():
+                        per_level_value = skill.per_level_effects.get(effect, 0)
+                        total_bonus = base_value + (per_level_value * (level - 1))
+                        
+                        if effect == "ac_bonus": self.ac += total_bonus
+                        if effect == "atk_bonus": self.atk_bonus += total_bonus
+                        if effect == "dmg_bonus": self.dmg_bonus += total_bonus
+
+            # Ensure current HP doesn't exceed the new max HP
+            if self.hp > self.max_hp:
+                self.hp = self.max_hp
+
+        # Other functions...
+        def get_xp_for_next_level(self):
+            return xp_thresholds.get(self.level + 1, 999999)
+
+        def gain_xp(self, base_amount=0, skill_amount=0):
+            self.base_xp += base_amount
+            self.skill_xp += skill_amount
+            self.check_for_level_up()
+
+        def check_for_level_up(self):
+            while self.base_xp >= self.get_xp_for_next_level():
+                self.level += 1
+                self.proficiency_bonus = 2 + ((self.level - 1) // 4)
+
         def add_item(self, item_id, amount=1):
-            # If the item is already in the inventory, just increase the count.
-            if item_id in self.inventory:
-                self.inventory[item_id] += amount
-            # Otherwise, add it to the inventory with the specified amount.
-            else:
-                self.inventory[item_id] = amount
+            if item_id in self.inventory: self.inventory[item_id] += amount
+            else: self.inventory[item_id] = amount
 
         def equip(self, item_id):
-            # Check if the item exists in inventory and is equippable.
             if item_id in self.inventory and item_database[item_id].category == "equippable":
-                # Decrease the item count in inventory.
                 self.inventory[item_id] -= 1
-                # If the count drops to 0, remove it from the inventory entirely.
-                if self.inventory[item_id] == 0:
-                    del self.inventory[item_id]
-                
-                # Add the actual Item object to the equipped list.
+                if self.inventory[item_id] == 0: del self.inventory[item_id]
                 self.equipped_items.append(item_database[item_id])
                 self.recalculate_stats()
 
         def unequip(self, item_to_unequip):
-            # Find the item's unique ID.
             item_id = next((key for key, value in item_database.items() if value == item_to_unequip), None)
             if item_id and item_to_unequip in self.equipped_items:
-                # Remove the item from the equipped list.
                 self.equipped_items.remove(item_to_unequip)
-                # Add it back to the inventory, stacking if it already exists.
                 self.add_item(item_id, 1)
                 self.recalculate_stats()
 
         def use_consumable(self, item_id):
-            # Check if the item exists in inventory and is a consumable.
             if item_id in self.inventory and item_database[item_id].category == "consumable":
                 item_to_use = item_database[item_id]
-                # Apply effects.
                 if "heal_amount" in item_to_use.effects:
                     self.hp += item_to_use.effects["heal_amount"]
-                    if self.hp > self.max_hp:
-                        self.hp = self.max_hp
-                
-                # Decrease the item count and remove if it reaches 0.
+                    if self.hp > self.max_hp: self.hp = self.max_hp
                 self.inventory[item_id] -= 1
-                if self.inventory[item_id] == 0:
-                    del self.inventory[item_id]
-
-        def recalculate_stats(self):
-            # Reset stats to their base values before applying item effects.
-            self.max_hp = self.base_max_hp
-            self.ac = self.base_ac
-
-            # Apply effects from all equipped items.
-            for item in self.equipped_items:
-                if "ac_bonus" in item.effects:
-                    self.ac += item.effects["ac_bonus"]
-                if "max_hp_percent_bonus" in item.effects:
-                    hp_bonus = int(self.base_max_hp * item.effects["max_hp_percent_bonus"])
-                    self.max_hp += hp_bonus
-
-            if self.hp > self.max_hp:
-                self.hp = self.max_hp
+                if self.inventory[item_id] == 0: del self.inventory[item_id]
 
         def get_modifier(self, attribute):
-            attr_value = getattr(self, attribute.lower())
-            return (attr_value - 10) // 2
+            return (getattr(self, attribute.lower()) - 10) // 2
 
         def copy(self):
             return CharacterStats(self.name, self.base_max_hp, self.base_ac, self.strength, self.dexterity, self.constitution, self.intelligence, self.wisdom, self.charisma)

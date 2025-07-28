@@ -1,8 +1,11 @@
 #// ------------------------------------------------------------------------------------------------
 #// Character Sheet and HUD
 #// ------------------------------------------------------------------------------------------------
-#// The inventory is now a tabbed interface with support for stackable items.
+#// The new 'Learned Skills' screen now includes an 'Upgrade' button with cost display.
 #// ------------------------------------------------------------------------------------------------
+#// to add xp and skill xp
+#// $ player_stats.gain_xp(base_amount=50, skill_amount=10)
+#//
 
 # Screen for the button that toggles the character sheet.
 screen player_hud():
@@ -13,7 +16,6 @@ screen player_hud():
 
 # Screen for displaying player stats, inventory, and equipment.
 screen player_stats_screen():
-    # This variable will keep track of which inventory tab is currently active.
     default inventory_tab = "equippable"
     modal True
 
@@ -22,7 +24,7 @@ screen player_stats_screen():
         yalign 0.5
         xsize 2560
         yminimum 600
-        ymaximum 1280
+        ymaximum 1580
         padding (30, 30)
 
         vbox:
@@ -46,20 +48,43 @@ screen player_stats_screen():
 
                     # --- LEFT COLUMN (STATS) ---
                     vbox:
-                        xsize 450
+                        xsize 550
                         spacing 10
                         text "Attributes" size 30
                         null height 5
-
+                        # --- Core Stats ---
+                        hbox:
+                            text "Level:" xsize 150
+                            text "[player_stats.level]"
                         hbox:
                             text "HP:" xsize 150
                             text "[player_stats.hp] / [player_stats.max_hp]"
                         hbox:
                             text "AC:" xsize 150
                             text "[player_stats.ac]"
+                        hbox:
+                            text "ATK Bonus:" xsize 150
+                            text "+[player_stats.atk_bonus]"
+                        hbox:
+                            text "DMG Bonus:" xsize 150
+                            text "+[player_stats.dmg_bonus]"
+                        hbox:
+                            text "Proficiency Bonus:" xsize 550 style "item_text"
+                            text "+[player_stats.proficiency_bonus]" style "item_text"
+
+                        null height 10
+
+                        # --- XP Trackers ---
+                        hbox:
+                            text "Base XP: " xsize 250 style "item_text"
+                            text "[player_stats.base_xp] / [player_stats.get_xp_for_next_level()]" style "item_text"
+                        hbox:
+                            text "Skill XP: " xsize 250 style "item_text"
+                            text "[player_stats.skill_xp]" style "item_text"
 
                         null height 15
 
+                        # --- Primary Attributes ---
                         hbox:
                             text "Strength:" xsize 150 style "item_text"
                             text "[player_stats.strength]" style "item_text"
@@ -127,8 +152,6 @@ screen player_stats_screen():
 
                                 vbox:
                                     spacing 5
-                                    
-                                    # This python block checks if there are any items of the currently selected category to display.
                                     python:
                                         category_has_items = False
                                         for item_id in player_stats.inventory:
@@ -136,20 +159,14 @@ screen player_stats_screen():
                                                 category_has_items = True
                                                 break
                                     
-                                    # Loop through the inventory dictionary (item_id: count)
                                     for item_id, count in player_stats.inventory.items():
-                                        # Get the full item object from the database using its ID
                                         python:
                                             item = item_database[item_id]
 
-                                        # Only display items that match the currently selected tab
                                         if item.category == inventory_tab:
                                             hbox:
-                                                # Display name and stack count
                                                 text "{} (x{})".format(item.name, count) style "item_text"
                                                 null
-                                                
-                                                # Show the correct button based on the category
                                                 if item.category == "equippable":
                                                     textbutton "Equip" text_style "inventory_button_text" action Function(player_stats.equip, item_id=item_id)
                                                 elif item.category == "consumable":
@@ -173,12 +190,9 @@ screen player_stats_screen():
                                     effects_str = []
                                     for key, value in item.effects.items():
                                         formatted_effect = "{}: {}".format(key.replace('_', ' ').capitalize(), value)
-                                        if key == "ac_bonus":
-                                            formatted_effect = "+{} AC".format(value)
-                                        elif key == "max_hp_percent_bonus":
-                                            formatted_effect = "+{}% Max HP".format(int(value * 100))
-                                        elif key == "damage":
-                                            formatted_effect = "Damage: {}".format(value)
+                                        if key == "ac_bonus": formatted_effect = "+{} AC".format(value)
+                                        elif key == "max_hp_percent_bonus": formatted_effect = "+{}% Max HP".format(int(value * 100))
+                                        elif key == "damage": formatted_effect = "Damage: {}".format(value)
                                         elif "_bonus" in key:
                                             stat_name = key.replace('_bonus', '').upper()
                                             formatted_effect = "+{} {}".format(value, stat_name)
@@ -187,8 +201,99 @@ screen player_stats_screen():
 
                                 text "Equipped - [item.name]: [display_effects]"  style "description_text"
 
-                        text "Passive Effects" style "item_text"
+                        # --- Passive Skill Effects ---
+                        text "Passive Benefits" style "item_text"
+                        null height 5
+                        
+                        if player_stats.active_skills:
+                            for skill_id in player_stats.active_skills:
+                                python:
+                                    skill = skill_database[skill_id]
+                                    level = player_stats.learned_skills[skill_id]
+                                    effects_str = []
+                                    for effect, base_value in skill.base_effects.items():
+                                        per_level_value = skill.per_level_effects.get(effect, 0)
+                                        total_bonus = base_value + (per_level_value * (level - 1))
+                                        
+                                        formatted_effect = ""
+                                        if effect == "ac_bonus": formatted_effect = "+{} AC".format(total_bonus)
+                                        elif effect == "atk_bonus": formatted_effect = "+{} ATK".format(total_bonus)
+                                        elif effect == "dmg_bonus": formatted_effect = "+{} DMG".format(total_bonus)
+                                        effects_str.append(formatted_effect)
+                                    display_effects = ", ".join(effects_str)
+                                text "Passive Benefit - [skill.name]: [display_effects]"   style "description_text"
+                        else:
+                            text "Passive Benefits"   style "description_text"
+                        
+                        null height 10
+                        # Button to open the new skills management screen
+                        textbutton "Manage Skills" action Show("learned_skills_screen") xalign 0.5
 
 
             else:
                 text "Character data not yet available. Please complete character creation." xalign 0.5
+
+# NEW SCREEN for managing learned skills.
+screen learned_skills_screen():
+    modal True
+    
+    frame:
+        xalign 0.5
+        yalign 0.5
+        xsize 800
+        padding (25, 25)
+
+        vbox:
+            spacing 15
+            
+            # --- Header ---
+            hbox:
+                text "Learned Skills" size 24 xalign 0.5
+                textbutton "Close" action Hide("learned_skills_screen") xalign 1.0
+
+            add Solid("#404040", xfill=True, ysize=1)
+
+            # --- Skills Viewport ---
+            viewport:
+                xsize 750
+                ysize 400
+                scrollbars "vertical"
+                mousewheel True
+
+                vbox:
+                    spacing 20
+                    if player_stats.learned_skills:
+                        for skill_id, level in player_stats.learned_skills.items():
+                            python:
+                                skill = skill_database[skill_id]
+                                is_active = skill_id in player_stats.active_skills
+                                toggle_button_text = "Deactivate" if is_active else "Activate"
+                                
+                                # Get the cost for the next level
+                                upgrade_cost = player_stats.get_skill_upgrade_cost(skill_id)
+                                can_afford = upgrade_cost is not None and player_stats.skill_xp >= upgrade_cost
+                            
+                            vbox:
+                                spacing 5
+                                hbox:
+                                    text "[skill.name] (Level [level]/[skill.max_level])" size 20
+                                    null
+                                    textbutton toggle_button_text action Function(player_stats.toggle_skill, skill_id=skill.id)
+                                
+                                text "[skill.description]"
+
+                                # --- Upgrade Button and Cost Display ---
+                                if upgrade_cost is not None:
+                                    hbox:
+                                        text "Next Level Cost: [upgrade_cost] Skill XP"
+                                        null
+                                        # The button is only clickable if the player can afford the upgrade.
+                                        textbutton "Upgrade" action Function(player_stats.level_up_skill, skill_id=skill.id) sensitive can_afford
+                                else:
+                                    text "Max Level Reached"
+
+                                if level >= skill.max_level:
+                                    text "Manifestation: [skill.manifestation_name]" bold True
+                                    text "[skill.manifestation_desc]"
+                    else:
+                        text "You have not learned any skills yet."

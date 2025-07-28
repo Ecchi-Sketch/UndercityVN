@@ -9,6 +9,7 @@ label game_start:
     # Initialize the item database and NPC roster.
     call initialize_npcs
     call initialize_items
+    call initialize_skills
 
     menu:
         "Act 1":

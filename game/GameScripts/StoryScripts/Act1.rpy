@@ -17,6 +17,10 @@ label Act1_Scene1_intro:
     "You find a healing draught on the ground and pocket it."
     $ player_stats.add_item("scrap_metal", 5)
     "You find scrap metal on the ground and pocket it."
+    $ player_stats.learn_skill("new_kid_in_town")
+    "You acquired the skill: New Kid in Town!"
+    $ player_stats.gain_xp(base_amount=0, skill_amount=10000)
+    "You've been granted an addtional 10000 skill XP!"
 
 label Act1_Scene2_Welcome:
 
