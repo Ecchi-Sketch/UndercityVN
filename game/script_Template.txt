@@ -1,0 +1,70 @@
+﻿# This defines the characters that will appear in the game.
+# The 'Character' object takes the name to be displayed and can have other properties
+# like 'color' to change the name's text color in the dialogue box.
+
+# We use a variable 'player_name' so it can be set at the start of the game.
+define player = Character("[player_name]")
+define npcname = Character("NPCName", color="#aaddff")
+
+# It's good practice to define your images at the top.
+# Replace these with your actual file names (e.g., "images/backgrounds/cargo_hold.jpg")
+image bg_backgroundlocation = "backgroundlocation_bg.png"
+
+image NPCimage = "NPC_character.png"
+
+
+# The game starts here. The 'label start:' is the default entry point for a new game.
+label start:
+    # Initial setup, like setting a default player name.
+    $ player_name = "Player"
+
+    # Begin with a black screen.
+    scene black with dissolve
+
+    # Move to the first scene.
+    jump scene_1_TBD
+
+
+# --- SCENE #: TBD ---
+label scene_1_TBD:
+    play sound "sounds/docking_clamp.ogg" # Placeholder sound
+    scene bg_backgroundlocation with dissolve
+
+    "narration"
+    npcname "dialogue"
+   
+    menu:
+        "Choice 1 Description":
+            jump Choice_1_Result
+        "Choice 2 Description":
+            jump Choice_2_Result
+        "Choice 3 Description":
+            jump Choice_3_Result
+
+
+# --- SCENE #: TBD ---
+label Choice_1_Result:
+    "Narration"
+    
+    jump scene_3_TBD
+
+label Choice_2_Result:
+    "Narration"
+    
+    jump scene_3_TBD
+
+label Choice_3_Result:
+    "Narration"
+    
+    jump scene_3_TBD
+
+
+
+# --- SCENE 3: TBD ---
+label scene_3_TBD:
+    
+    
+
+
+    return # End of Session 
+
