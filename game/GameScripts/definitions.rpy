@@ -24,48 +24,80 @@ python early:
             self.hp = self.base_max_hp # Start with full health
             self.ac = self.base_ac
 
-            # Inventory and Equipment attributes
-            self.inventory = []
-            self.equipped_items = [] # A simple list for all equipped items
+            # --- INVENTORY OVERHAUL ---
+            # The inventory is now a dictionary to handle item stacks.
+            # The key is the item's unique ID (from item_database), and the value is the quantity.
+            self.inventory = {}
+            # Equipped items remains a list of the actual Item objects.
+            self.equipped_items = []
 
-        def equip(self, item_to_equip):
-            # Move the item from inventory to equipped list
-            if item_to_equip in self.inventory:
-                self.inventory.remove(item_to_equip)
-                self.equipped_items.append(item_to_equip)
+        # NEW: The primary function for adding items to the inventory.
+        def add_item(self, item_id, amount=1):
+            # If the item is already in the inventory, just increase the count.
+            if item_id in self.inventory:
+                self.inventory[item_id] += amount
+            # Otherwise, add it to the inventory with the specified amount.
+            else:
+                self.inventory[item_id] = amount
+
+        def equip(self, item_id):
+            # Check if the item exists in inventory and is equippable.
+            if item_id in self.inventory and item_database[item_id].category == "equippable":
+                # Decrease the item count in inventory.
+                self.inventory[item_id] -= 1
+                # If the count drops to 0, remove it from the inventory entirely.
+                if self.inventory[item_id] == 0:
+                    del self.inventory[item_id]
+                
+                # Add the actual Item object to the equipped list.
+                self.equipped_items.append(item_database[item_id])
                 self.recalculate_stats()
 
         def unequip(self, item_to_unequip):
-            # Move the item from equipped list back to inventory
-            if item_to_unequip in self.equipped_items:
+            # Find the item's unique ID.
+            item_id = next((key for key, value in item_database.items() if value == item_to_unequip), None)
+            if item_id and item_to_unequip in self.equipped_items:
+                # Remove the item from the equipped list.
                 self.equipped_items.remove(item_to_unequip)
-                self.inventory.append(item_to_unequip)
+                # Add it back to the inventory, stacking if it already exists.
+                self.add_item(item_id, 1)
                 self.recalculate_stats()
 
+        def use_consumable(self, item_id):
+            # Check if the item exists in inventory and is a consumable.
+            if item_id in self.inventory and item_database[item_id].category == "consumable":
+                item_to_use = item_database[item_id]
+                # Apply effects.
+                if "heal_amount" in item_to_use.effects:
+                    self.hp += item_to_use.effects["heal_amount"]
+                    if self.hp > self.max_hp:
+                        self.hp = self.max_hp
+                
+                # Decrease the item count and remove if it reaches 0.
+                self.inventory[item_id] -= 1
+                if self.inventory[item_id] == 0:
+                    del self.inventory[item_id]
+
         def recalculate_stats(self):
-            # Reset stats to their base values before applying item effects
+            # Reset stats to their base values before applying item effects.
             self.max_hp = self.base_max_hp
             self.ac = self.base_ac
 
-            # Apply effects from all equipped items
+            # Apply effects from all equipped items.
             for item in self.equipped_items:
                 if "ac_bonus" in item.effects:
                     self.ac += item.effects["ac_bonus"]
                 if "max_hp_percent_bonus" in item.effects:
-                    # Calculate bonus based on base HP to prevent runaway stacking
                     hp_bonus = int(self.base_max_hp * item.effects["max_hp_percent_bonus"])
                     self.max_hp += hp_bonus
 
-            # Ensure current HP doesn't exceed the new max HP
             if self.hp > self.max_hp:
                 self.hp = self.max_hp
 
-        # A helper function to calculate the d20 modifier for an attribute.
         def get_modifier(self, attribute):
             attr_value = getattr(self, attribute.lower())
             return (attr_value - 10) // 2
 
-        # A helper function to create a unique copy of this character.
         def copy(self):
             return CharacterStats(self.name, self.base_max_hp, self.base_ac, self.strength, self.dexterity, self.constitution, self.intelligence, self.wisdom, self.charisma)
 
@@ -89,11 +121,33 @@ style equipped_item_text is default:
     bold True
     # You can add other properties like fonts, outlines, etc.
 
+style item_text is default:
+    size 50
+    color "#FFFFFF" # white
+    bold False
+#    hover_color "#aaddff"
+    # You can add other properties like fonts, outlines, etc.
+
+style item_tab_text is default:
+    size 50
+    color "#FFFFFF" # A light blue color for stats
+    bold True
+    hover_color "#aaddff"
+    # You can add other properties like fonts, outlines, etc.
+
 style description_text is default:
     size 30
     color "#aaddff" # A light blue color for stats
     bold True
     # You can add other properties like fonts, outlines, etc.
+
+style red_white_highlight_text is default:
+    size 30
+    color "#ff2a00" # A light blue color for stats
+    bold True
+    hover_color "#ffffff"
+    # You can add other properties like fonts, outlines, etc.
+
 
 
 style inventory_button_text is default:

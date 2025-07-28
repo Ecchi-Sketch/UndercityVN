@@ -1,56 +1,97 @@
 #// ------------------------------------------------------------------------------------------------
 #// Item Definitions
 #// ------------------------------------------------------------------------------------------------
-#// This file defines the base class for all items and creates a database of
-#// all available items in the game.
+#// The Item class has been updated to include a 'category' attribute.
+#// Categories are: 'equippable', 'consumable', 'plot', and 'misc'.
 #// ------------------------------------------------------------------------------------------------
+
+#// ------------------------------------------------------------------------------------------------
+#// ITEM TEMPLATE - Copy and paste this block to create a new item.
+#// ------------------------------------------------------------------------------------------------
+#   # --- [CATEGORY NAME] ---
+#   item_database["[item_id]"] = Item(
+#       name="[Item Name]",
+#       description="[A brief description of the item.]",
+#       category="[equippable/consumable/plot/misc]",
+#       # The 'slot' is only needed for 'equippable' items.
+#       slot="[weapon/armor/accessory]",
+#       # The 'effects' dictionary holds all mechanical bonuses.
+#       effects={"[effect_name]": [value], "[another_effect]": "[value]"}
+#   )
+#// ------------------------------------------------------------------------------------------------
+
 
 init python:
     # The base class for all items in the game.
     class Item:
-        def __init__(self, name, description, slot, effects=None):
+        # The 'slot' is now optional, as other categories don't need one.
+        def __init__(self, name, description, category, slot=None, effects=None):
             self.name = name
             self.description = description
-            # The slot determines where the item can be equipped (e.g., "weapon", "armor").
+            self.category = category # "equippable", "consumable", "plot", "misc"
             self.slot = slot
-            # The effects dictionary stores the mechanical benefits of the item.
             self.effects = effects if effects is not None else {}
 
     # This dictionary will hold all defined items for easy access.
-    # We can fetch an item by its key, e.g., item_database["shiv"]
     item_database = {}
 
 # This label should be called once at the start of the game to populate the database.
 label initialize_items:
     python:
-        # --- WEAPONS ---
+        # --- EQUIPPABLE: WEAPONS ---
         item_database["makeshift_shiv"] = Item(
             name="Makeshift Shiv",
             description="A sharpened piece of scrap metal. It's not much, but it's pointy.",
+            category="equippable",
             slot="weapon",
-            effects={"damage": "1d4"} # A small, concealable weapon
+            effects={"damage": "1d4"}
         )
 
         item_database["iron_knuckles"] = Item(
             name="Iron Knuckles",
             description="Heavy iron knuckles that add significant weight to a punch.",
+            category="equippable",
             slot="weapon",
             effects={"damage": "1d6"}
         )
 
-        # --- ARMOR ---
+        # --- EQUIPPABLE: ARMOR ---
         item_database["reinforced_vest"] = Item(
             name="Reinforced Vest",
             description="A heavy leather vest reinforced with scavenged metal plates.",
+            category="equippable",
             slot="armor",
             effects={"ac_bonus": 2}
         )
 
-        # --- ACCESSORIES ---
+        # --- EQUIPPABLE: ACCESSORIES ---
         item_database["chem_stimulator"] = Item(
             name="Volatile Chem-Stimulator",
             description="A crude device that injects a cocktail of stimulants, temporarily boosting vitality.",
+            category="equippable",
             slot="accessory",
-            effects={"max_hp_percent_bonus": 0.5} # 50% increase to max HP
+            effects={"max_hp_percent_bonus": 0.5}
+        )
+        
+        # --- CONSUMABLES ---
+        item_database["healing_draught"] = Item(
+            name="Healing Draught",
+            description="A vial of shimmering green liquid that restores a small amount of health.",
+            category="consumable",
+            effects={"heal_amount": 10}
+        )
+
+        # --- PLOT ITEMS ---
+        item_database["old_sewer_key"] = Item(
+            name="Old Sewer Key",
+            description="A heavy, rust-covered iron key. Seems important.",
+            category="plot"
+        )
+
+        # --- MISCELLANEOUS ITEMS ---
+        item_database["scrap_metal"] = Item(
+            name="Scrap Metal",
+            description="A handful of twisted metal. Might be useful for crafting or just worth a few cogs.",
+            category="misc"
         )
     return
