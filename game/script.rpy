@@ -6,8 +6,9 @@ label start:
 
 # This label starts the actual game narrative after creation is complete.
 label game_start:
-    # Initialize the NPC roster.
+    # Initialize the item database and NPC roster.
     call initialize_npcs
+    call initialize_items
 
     menu:
         "Act 1":
@@ -16,5 +17,6 @@ label game_start:
             jump Choice_2_Result
         "Choice 3 Description":
             jump Choice_3_Result
+    
     return
 
