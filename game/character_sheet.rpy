@@ -1,11 +1,26 @@
 #// ------------------------------------------------------------------------------------------------
 #// Character Sheet and HUD
 #// ------------------------------------------------------------------------------------------------
-#// The new 'Learned Skills' screen now includes an 'Upgrade' button with cost display.
+#// The 'Learned Skills' screen now shows current/next level effects and has a button for a full upgrade tree.
 #// ------------------------------------------------------------------------------------------------
-#// to add xp and skill xp
-#// $ player_stats.gain_xp(base_amount=50, skill_amount=10)
-#//
+
+# This python block defines a helper function that can be used by multiple screens in this file.
+init python:
+    # --- Function to format skill effects for display ---
+    def get_effects_string(skill_obj, skill_level):
+        if skill_level > skill_obj.max_level:
+            return "N/A"
+        effects = []
+        for effect, base_value in skill_obj.base_effects.items():
+            per_level_value = skill_obj.per_level_effects.get(effect, 0)
+            total_bonus = base_value + (per_level_value * (skill_level - 1))
+            
+            formatted = ""
+            if effect == "ac_bonus": formatted = "+{} AC".format(total_bonus)
+            elif effect == "atk_bonus": formatted = "+{} ATK".format(total_bonus)
+            elif effect == "dmg_bonus": formatted = "+{} DMG".format(total_bonus)
+            effects.append(formatted)
+        return ", ".join(effects)
 
 # Screen for the button that toggles the character sheet.
 screen player_hud():
@@ -24,7 +39,7 @@ screen player_stats_screen():
         yalign 0.5
         xsize 2560
         yminimum 600
-        ymaximum 1580
+        ymaximum 1500
         padding (30, 30)
 
         vbox:
@@ -50,7 +65,7 @@ screen player_stats_screen():
                     vbox:
                         xsize 550
                         spacing 10
-                        text "Attributes" size 30
+                        text "Attributes" style "subheader_text"
                         null height 5
                         # --- Core Stats ---
                         hbox:
@@ -63,11 +78,11 @@ screen player_stats_screen():
                             text "AC:" xsize 150
                             text "[player_stats.ac]"
                         hbox:
-                            text "ATK Bonus:" xsize 150
-                            text "+[player_stats.atk_bonus]"
+                            text "ATK Bonus:" xsize 550 style "item_text"
+                            text "+[player_stats.atk_bonus]" style "item_text"
                         hbox:
-                            text "DMG Bonus:" xsize 150
-                            text "+[player_stats.dmg_bonus]"
+                            text "DMG Bonus:" xsize 550 style "item_text"
+                            text "+[player_stats.dmg_bonus]" style "item_text"
                         hbox:
                             text "Proficiency Bonus:" xsize 550 style "item_text"
                             text "+[player_stats.proficiency_bonus]" style "item_text"
@@ -114,7 +129,7 @@ screen player_stats_screen():
                         # --- EQUIPPED ITEMS ---
                         vbox:
                             spacing 8
-                            text "Equipped Items" size 30
+                            text "Equipped Items" style "subheader_text"
                             null height 5
 
                             if player_stats.equipped_items:
@@ -132,7 +147,7 @@ screen player_stats_screen():
                         # --- INVENTORY (NOW WITH TABS) ---
                         vbox:
                             spacing 8
-                            text "Inventory" size 30
+                            text "Inventory" style "subheader_text"
                             
                             # --- Tab Buttons ---
                             hbox:
@@ -181,7 +196,7 @@ screen player_stats_screen():
                     vbox:
                         xsize 750
                         spacing 10
-                        text "Active Effects" style "item_text"
+                        text "Active Effects"  style "subheader_text"
                         null height 5
                         
                         if player_stats.equipped_items:
@@ -200,30 +215,22 @@ screen player_stats_screen():
                                     display_effects = ", ".join(effects_str)
 
                                 text "Equipped - [item.name]: [display_effects]"  style "description_text"
+                        else:
+                            text "Active - None"  style "inactive_text"
+                            null
 
                         # --- Passive Skill Effects ---
-                        text "Passive Benefits" style "item_text"
+                        text "Passive Effects" style "subheader_text"
                         null height 5
-                        
                         if player_stats.active_skills:
                             for skill_id in player_stats.active_skills:
                                 python:
                                     skill = skill_database[skill_id]
                                     level = player_stats.learned_skills[skill_id]
-                                    effects_str = []
-                                    for effect, base_value in skill.base_effects.items():
-                                        per_level_value = skill.per_level_effects.get(effect, 0)
-                                        total_bonus = base_value + (per_level_value * (level - 1))
-                                        
-                                        formatted_effect = ""
-                                        if effect == "ac_bonus": formatted_effect = "+{} AC".format(total_bonus)
-                                        elif effect == "atk_bonus": formatted_effect = "+{} ATK".format(total_bonus)
-                                        elif effect == "dmg_bonus": formatted_effect = "+{} DMG".format(total_bonus)
-                                        effects_str.append(formatted_effect)
-                                    display_effects = ", ".join(effects_str)
-                                text "Passive Benefit - [skill.name]: [display_effects]"   style "description_text"
+                                    display_effects = get_effects_string(skill, level)
+                                text "Passive Benefit - [skill.name]: [display_effects]" style "description_text"
                         else:
-                            text "Passive Benefits"   style "description_text"
+                            text "Passive - None"  style "inactive_text"
                         
                         null height 10
                         # Button to open the new skills management screen
@@ -233,14 +240,14 @@ screen player_stats_screen():
             else:
                 text "Character data not yet available. Please complete character creation." xalign 0.5
 
-# NEW SCREEN for managing learned skills.
+# SCREEN for managing learned skills.
 screen learned_skills_screen():
     modal True
     
     frame:
         xalign 0.5
         yalign 0.5
-        xsize 800
+        xsize 1800
         padding (25, 25)
 
         vbox:
@@ -248,15 +255,16 @@ screen learned_skills_screen():
             
             # --- Header ---
             hbox:
-                text "Learned Skills" size 24 xalign 0.5
-                textbutton "Close" action Hide("learned_skills_screen") xalign 1.0
+                textbutton "X" text_style "red_white_highlight_text" action Hide("learned_skills_screen") 
+                text "Learned Skills"  style "subheader_text"
+                
 
             add Solid("#404040", xfill=True, ysize=1)
 
             # --- Skills Viewport ---
             viewport:
-                xsize 750
-                ysize 400
+                xsize 1750
+                ysize 800
                 scrollbars "vertical"
                 mousewheel True
 
@@ -269,31 +277,94 @@ screen learned_skills_screen():
                                 is_active = skill_id in player_stats.active_skills
                                 toggle_button_text = "Deactivate" if is_active else "Activate"
                                 
-                                # Get the cost for the next level
                                 upgrade_cost = player_stats.get_skill_upgrade_cost(skill_id)
                                 can_afford = upgrade_cost is not None and player_stats.skill_xp >= upgrade_cost
-                            
+
+                                current_effects = get_effects_string(skill, level)
+                                next_level_effects = get_effects_string(skill, level + 1)
+
                             vbox:
                                 spacing 5
-                                hbox:
-                                    text "[skill.name] (Level [level]/[skill.max_level])" size 20
+                                hbox:                                 
+                                    
+                                    text "[skill.name] (Level [level]/[skill.max_level])" style "subheader_text"
+                                    
                                     null
-                                    textbutton toggle_button_text action Function(player_stats.toggle_skill, skill_id=skill.id)
+                                    #activate-deactivate
+                                    textbutton toggle_button_text text_style "red_white_highlight_text" action Function(player_stats.toggle_skill, skill_id=skill.id)
                                 
-                                text "[skill.description]"
+                                text "[skill.description]" style "description_text"
+
+                                # --- Current and Next Level Effects Display ---
+                                text "Current Effects: [current_effects]" style "item_text"
+                                if level < skill.max_level:
+                                    text "Next Level Effects: [next_level_effects]" style "item_text"
 
                                 # --- Upgrade Button and Cost Display ---
                                 if upgrade_cost is not None:
                                     hbox:
-                                        text "Next Level Cost: [upgrade_cost] Skill XP"
+                                        text "Next Level Cost: [upgrade_cost] Skill XP" style "item_text"
                                         null
-                                        # The button is only clickable if the player can afford the upgrade.
-                                        textbutton "Upgrade" action Function(player_stats.level_up_skill, skill_id=skill.id) sensitive can_afford
+                                        #upgrade
+                                        textbutton "Upgrade" text_style "green_to_blue" action Function(player_stats.level_up_skill, skill_id=skill.id) sensitive can_afford
                                 else:
-                                    text "Max Level Reached"
+                                    text "Max Level Reached" style "item_text"
 
                                 if level >= skill.max_level:
-                                    text "Manifestation: [skill.manifestation_name]" bold True
-                                    text "[skill.manifestation_desc]"
+                                    text "Manifestation: [skill.manifestation_name]" bold True style "item_text"
+                                    text "[skill.manifestation_desc]" style "description_text"
+                                
+                                # --- View Upgrade Tree Button ---
+                                textbutton "View Upgrade Tree" text_style "inventory_button_text" action Show("skill_tree_screen", skill_id=skill.id)
+                            
+                            add Solid("#404040", xfill=True, ysize=1)
                     else:
-                        text "You have not learned any skills yet."
+                        text "You have not learned any skills yet." style "item_text"
+                
+
+
+
+# NEW SCREEN for viewing a skill's full upgrade tree.
+screen skill_tree_screen(skill_id):
+    modal True
+
+    frame:
+        xalign 0.5
+        yalign 0.5
+        xsize 1800
+        padding (25, 25)
+
+        vbox:
+            spacing 15
+            python:
+                skill = skill_database[skill_id]
+
+            # --- Header ---
+            hbox:
+                textbutton "X" text_style "red_white_highlight_text" action Hide("skill_tree_screen") xalign 1.0
+                text "[skill.name] - Upgrade Tree"  style "subheader_text"
+                
+            
+            add Solid("#404040", xfill=True, ysize=1)
+
+            # --- Tree Viewport ---
+            viewport:
+                xsize 1750
+                ysize 1000
+                scrollbars "vertical"
+
+                vbox:
+                    spacing 8
+                    # Loop from level 1 to the max level to show progression
+                    for i in range(1, skill.max_level + 1):
+                        python:
+                            # Re-using the globally defined effect formatting function
+                            display_effects = get_effects_string(skill, i)
+                        
+                        text "Level [i]: [display_effects]" style "item_text"
+                    
+                    # --- Manifestation Display ---
+                    add Solid("#404040", xfill=True, ysize=1)
+                    null height 5
+                    text "Manifestation: [skill.manifestation_name]" bold True style "item_text"
+                    text "[skill.manifestation_desc]" style "description_text"

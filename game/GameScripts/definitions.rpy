@@ -192,6 +192,13 @@ style item_text is default:
 #    hover_color "#aaddff"
     # You can add other properties like fonts, outlines, etc.
 
+style subheader_text is default:
+    size 40
+    color "#898989" # gray
+    bold True
+#    hover_color "#aaddff"
+    # You can add other properties like fonts, outlines, etc.
+
 style item_tab_text is default:
     size 50
     color "#FFFFFF" # A light blue color for stats
@@ -205,12 +212,32 @@ style description_text is default:
     bold True
     # You can add other properties like fonts, outlines, etc.
 
+style inactive_text is default:
+    size 30
+    color "#dfdfdf" # gray
+    bold False
+    # You can add other properties like fonts, outlines, etc.
+
+style skill_upgrade_text is default:
+    size 40
+    color "#72aacf" # blue
+    bold True
+    # You can add other properties like fonts, outlines, etc.
+
 style red_white_highlight_text is default:
     size 30
     color "#ff2a00" # A light blue color for stats
     bold True
     hover_color "#ffffff"
     # You can add other properties like fonts, outlines, etc.
+
+style green_to_blue is default:
+    size 30
+    color "#79aa88" # green
+    bold True
+    hover_color "#aaddff"
+    # You can add other properties like fonts, outlines, etc.
+
 
 
 
