@@ -82,6 +82,7 @@ python early:
             # Check if the skill can be leveled up and if the player has enough total Skill XP.
             if cost is not None and self.skill_xp >= cost:
                 self.learned_skills[skill_id] += 1
+                self.skill_xp -= cost  # Deduct the cost from skill XP
                 self.recalculate_stats()
 
         # --- STAT RECALCULATION ---

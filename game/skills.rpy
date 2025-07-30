@@ -44,4 +44,15 @@ label initialize_skills:
             manifestation_name="Local Legend",
             manifestation_desc="Your first attack in combat is a guaranteed critical hit."
         )
+
+        skill_database["test_skill"] = LearnedSkill(
+            id="test_skill",
+            name="Test Skill",
+            description="This is a test of the new skill input process.",
+            max_level=10,
+            base_effects={"ac_bonus": 5, "atk_bonus": 5, "dmg_bonus": 5},
+            per_level_effects={"ac_bonus": 1, "atk_bonus": 1, "dmg_bonus": 1},
+            manifestation_name="TBD Manifestation",
+            manifestation_desc="You've reached the lvl 10 manifestation ability!"
+        )
     return
