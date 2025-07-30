@@ -55,4 +55,48 @@ label initialize_skills:
             manifestation_name="TBD Manifestation",
             manifestation_desc="You've reached the lvl 10 manifestation ability!"
         )
+        
+        skill_database["scavenger"] = LearnedSkill(
+            id="scavenger",
+            name="Scavenger",
+            description="Years of surviving in the undercity have taught you to find resources where others see only trash.",
+            max_level=5,
+            base_effects={"ac_bonus": 1},
+            per_level_effects={"ac_bonus": 1},
+            manifestation_name="Wasteland Hunter",
+            manifestation_desc="You can find valuable items in the most unlikely places."
+        )
+        
+        skill_database["tough_as_nails"] = LearnedSkill(
+            id="tough_as_nails",
+            name="Tough as Nails",
+            description="You've endured so much pain that your body has adapted to withstand punishment that would fell others.",
+            max_level=5,
+            base_effects={"max_hp_percent_bonus": 0.1},  # 10% more HP
+            per_level_effects={"max_hp_percent_bonus": 0.05},  # +5% per level
+            manifestation_name="Unbreakable",
+            manifestation_desc="You become immune to being knocked unconscious by non-lethal damage."
+        )
+        
+        skill_database["street_fighter"] = LearnedSkill(
+            id="street_fighter",
+            name="Street Fighter",
+            description="You've learned to fight dirty in the undercity's brutal conflicts, using every advantage to survive.",
+            max_level=5,
+            base_effects={"atk_bonus": 2, "dmg_bonus": 1},
+            per_level_effects={"atk_bonus": 1, "dmg_bonus": 1},
+            manifestation_name="Dirty Fighter",
+            manifestation_desc="Your critical hits have a chance to inflict debilitating status effects."
+        )
+        
+        skill_database["intimidation"] = LearnedSkill(
+            id="intimidation",
+            name="Intimidation",
+            description="Your presence alone can make enemies think twice about fighting you.",
+            max_level=3,
+            base_effects={"ac_bonus": 1},  # Enemies hesitate to attack
+            per_level_effects={"ac_bonus": 1},
+            manifestation_name="Terrifying Presence",
+            manifestation_desc="Weaker enemies may flee rather than fight you."
+        )
     return

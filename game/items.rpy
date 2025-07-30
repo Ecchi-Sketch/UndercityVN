@@ -64,6 +64,27 @@ label initialize_items:
             tags=["Equippable", "Weapon", "Melee"]
         )
         
+
+    #============================================================================
+    # Character Specific Items
+    #============================================================================
+    
+        item_database["sevikas_puncher"] = Item(
+            name="Sevika's Puncher",
+            description="A shimmer-infused prosthetic arm, befitting for Silco's top enforcer.",
+            category="equippable",
+            slot="weapon",
+            effects={"damage": "1d10"},
+            cost=0,
+            tags=["Sevika", "Weapon", "Melee", "Plot"]
+        )
+
+
+    #============================================================================
+    # Common Items
+    #============================================================================
+
+
         # --- EQUIPPABLE: ARMOR ---
         item_database["reinforced_vest"] = Item(
             name="Reinforced Vest",
@@ -181,11 +202,5 @@ label initialize_items:
         )
 
         # --- MISCELLANEOUS ITEMS ---
-        item_database["scrap_metal"] = Item(
-            name="Scrap Metal",
-            description="A handful of twisted metal. Might be useful for crafting or just worth a few cogs.",
-            category="misc",
-            cost=3,
-            tags=["Misc", "Crafting", "Material"]
-        )
+
     return

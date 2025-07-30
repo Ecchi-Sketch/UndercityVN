@@ -16,7 +16,7 @@ python early:
 
     # We define a Python class to hold all the character's TTRPG stats.
     class CharacterStats:
-        def __init__(self, name, hp, ac, str, dex, con, intl, wis, cha):
+        def __init__(self, name, hp, ac, str, dex, con, intl, wis, cha, description="", backstory="", fighting_style=""):
             self.name = name
 
             # Base stats
@@ -53,6 +53,13 @@ python early:
             # Learned Skills
             self.learned_skills = {} # Stores skill IDs and their current level, e.g., {"new_kid_in_town": 1}
             self.active_skills = [] # A list of skill IDs that are currently toggled on.
+            
+            # Extended fields for dynamic NPCs
+            self.description = description        # Physical description
+            self.backstory = backstory           # Character background
+            self.fighting_style = fighting_style # Combat style description
+            self.is_dynamic = False             # Flag for dynamically created NPCs
+            self.creation_timestamp = None      # When this NPC was created
             
         def apply_loadout(self, npc_id):
             """Apply equipment, skills, and abilities loadout for an NPC"""

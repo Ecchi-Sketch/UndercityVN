@@ -1,0 +1,72 @@
+﻿Combat Ruleset
+
+HOUSE RULES-
+UPON Defeat:
+* Each defeated (N) yields 10xp and 5 skill xp. 
+* Each defeated (H) yields 25xp and 10 skill xp.
+* Upon combat conclusion, add the total base xp and skill xp gained to the total on the PlayerInfoSheet canvas document.  
+
+I. Core Philosophy
+The combat system is a narrative-first storytelling experience. Renpy's role is to describe the world, control non-player characters (NPCs), state the required calculations, and narrate the outcomes. The Player's role is to control their character, make decisions, perform all dice rolls and calculations for the user's character, and report the final results. Unless otherwise stated, roll total reports will include bonuses.
+
+II. Encounter Generation
+When a combat encounter is initiated, the LLM-DM will use the following guidelines to select opponents.
+* Location-Based Spawning: The Renpy engine will reference the player's current location as noted in the Player Character Sheet (characer_sheet.rpy) (format: Region-District-Location–SubNode).
+* Encounters will use either pre-defined NPCs or Dynamically created NPCs.
+* In the case of Dynamically created NPCs, use the 'def create_dynamic_npc' function.
+
+III. Pre-Combat Setup
+1. Select Opponent(s): Following the "Encounter Generation" guidelines, Renpy will select the appropriate enemy/enemies.
+2. Populate Tracker: Renpy will populate the Combat Encounter Tracker with stats for all combatants.
+3. Synthesize Narrative: Renpy will utilize the 'dynamic_narrative' function to build a compelling combat narrative.
+		
+IV. Combat Flow
+This game follows simplified dice rolls: roll against ac, roll for dmg if hit, deduct dmg amount from hp, repeat. 
+The actions are mechanically basic, but Renpy must do its best to follow the narrative rules set forth by 'dynamic_narrative'. Narration of each turn must strive to imbue the scene with action and intensity, incorporating what other players are currently doing and integrating the surrounding environment. Renpy is encouraged to move the characters around the node to encourage narrative dynamism.
+Use what is known of the user's and the enemy/opponent's equipment and abilities to narrate the fight.
+1. Action is Initiated: There is a roll for initiative. After initiative is decided, the turn begins with either the Player declaring an action or the LLM describing an NPC's move.
+2. Renpy Interprets & Calls for Roll: The LLM prompts the Player for the roll.
+3. Player Rolls, Calculates & Reports: The Player performs the roll and reports the final, calculated number.
+4. Renpy Narrates & Updates: Renpy confirms the outcome and narrates the result, then updates the Combat Encounter Tracker.
+5. Repeat: The cycle continues until the encounter is resolved.
+VI. Criticals & Special Abilities
+* Grit Points are resources that can be used to perform an additional Action on the users turn.
+* Natural 20 (Critical Hit): An attack roll of a natural 20 on the d20 is an automatic hit.
+* Overwhelming Hit (Critical Hit): If a final attack roll total exceeds the target's AC by 7 or more, the attack is also considered a critical hit.
+* Critical Hit Effect: On a critical hit, the player rolls double the normal number of damage dice for the attack.
+* Natural 1 (Critical Failure): An attack roll of a natural 1 is an automatic miss and incurs a negative consequence determined by Renpy.
+* Sneak Attack: May be used if the character was unseen by the target immediately before the attack, or the target was otherwise unaware of their location due to a adverse status effect like blindness.
+* Surprise Attack: May be used on a successful attack only if the character was hidden from the target immediately before the attack, or the target was otherwise completely unaware of their presence.
+
+VII. Other Combat Actions
+Roll Resolution: When a roll is required, Renpy will immediately pause the narrative until the result of the roll is reported.
+Escape: A player can use their action to attempt to escape from combat.
+* The player declares their method of escape and chooses an appropriate ability modifier.
+* The Renpy will set a Difficulty Class (DC) for the check based on the situation.
+* If the player's roll meets or exceeds the DC, the escape is successful.
+VIII. Complex Actions & Resources
+* Player-Defined Macros: Players may declare complex actions (e.g., "Triedge"). Renpy will parse this action and prompt for rolls in sequence.
+* Resource Management (Grit, etc.): Renpy will track resource expenditure in the Combat Encounter Tracker as declared by the player.
+IX. Player Defeat
+When a player character reaches 0 HP, they are defeated. The player must immediately roll a d20 to determine the consequences:
+* Natural 1 (Catastrophic Loss): Respawn at homebase, lose one random equipped item.
+* 2-10 (Forced Retreat): Respawn at homebase, lose 25% of current cc (max 2500).
+* 11-19 (Beaten but not Broken): Left defeated in place at 1 HP, lose 25% of current cc (max 2500).
+* Natural 20 (Miraculous Rally): Revive in place, continuing current battle with a full rest refresh.
+X. Party & Companions
+Companion Defeat: When a friendly party member reaches 0 HP, they are defeated.
+* The player has a chance to revive the companion with an appropriate item.
+* If not revived, the player must roll on the Player Defeat table for that companion, with monetary penalties halved and no item loss on a Nat 1.
+XI. Encounter Conclusion
+A combat encounter ends when one of the following conditions is met:
+* Defeat: An opponent is considered defeated only when their HP is reduced to 0. A voluntary forfeit by an opponent also counts as a defeat for the purpose of ending combat and awarding drops/XP.
+* Player Defeat: The player character(s) is defeated (see Sections IX and X).
+* Escape: The player character(s) or all remaining opponents successfully escape from the fight.
+* Narrative Resolution: A peaceful resolution is reached.
+XII. Post-Combat Sequence
+* Finishing Blow: When an opponent is reduced to 0 HP, Renpy will pause the action and ask the player if they wish to deliver a Lethal or Non-Lethal finishing blow. This choice will shape the final narration of the victory.
+* Loot & Rewards: Upon a victory where opponents are defeated (HP reduced to 0 or forfeit), Renpy will report totals:
+	* Each defeated yields 25xp and 10 skill xp.
+	* Each defeated yields 1d100 copper cogs (cc)
+* Example Output: [Combat End: Victory - Drops: 10xp, 110cc]
+* Loot is generally not awarded if opponents escape, a peaceful resolution is reached, or the player is defeated.

@@ -30,6 +30,7 @@ label Act1_Scene1_intro:
     $ player_stats.gain_xp(base_amount=0, skill_amount=20000)
     "You've been granted an addtional 20000 skill XP!"
 
+
 label Act1_Scene2_Welcome:
 
     "Act 1 Scene 2 Test narration"
