@@ -250,6 +250,13 @@ style subheader_text is default:
 #    hover_color "#aaddff"
     # You can add other properties like fonts, outlines, etc.
 
+style subheader_hover_text is default:
+    size 40
+    color "#898989" # gray
+    bold True
+    hover_color "#ffffff" # white
+    # You can add other properties like fonts, outlines, etc.
+
 style item_tab_text is default:
     size 50
     color "#FFFFFF" # A light blue color for stats

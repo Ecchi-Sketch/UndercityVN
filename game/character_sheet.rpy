@@ -396,12 +396,16 @@ screen skill_tree_screen(skill_id):
 # Feature-rich crafting screen - FIXED: craft_item no longer returns values
 screen crafting_screen():
     modal True
+    default recipe_category = "equippable"
+    default have_ingredients_filter = False
+    default have_skills_filter = False
+    default inventory_tab = "equippable"
     
     frame:
         xalign 0.5
         yalign 0.5
-        xsize 1400
-        ysize 800
+        xsize 2560
+        ysize 1500
         padding (20, 20)
 
         vbox:
@@ -420,19 +424,91 @@ screen crafting_screen():
                 
                 # Left: Recipe list
                 vbox:
-                    xsize 650
-                    text "Available Recipes" style "subheader_text"
+                    xsize 1300
                     
+                    # Recipe category tabs
+                    hbox:
+                    
+                        spacing 0
+                        text "Recipes:" style "subheader_text"
+                    
+                    hbox:
+                    
+                        spacing 0
+                        #text "Recipes:" style "subheader_text"
+                        textbutton "Equippable" action SetScreenVariable("recipe_category", "equippable") text_style "subheader_hover_text"
+                        textbutton "Consumables" action SetScreenVariable("recipe_category", "consumable") text_style "subheader_hover_text"
+                        textbutton "Plot" action SetScreenVariable("recipe_category", "plot") text_style "subheader_hover_text"
+                        textbutton "Misc" action SetScreenVariable("recipe_category", "misc") text_style "subheader_hover_text"
+                    
+                    # Filters
+                    hbox:
+                        spacing 0
+                        text "Filters:" style "subheader_text"
+                                     
+                    hbox:
+                        spacing 0
+                        #text "Filters:" style "subheader_text"
+                        
+                        textbutton "Have required ingredients" text_style "red_white_highlight_text" action ToggleScreenVariable("have_ingredients_filter")
+                        text ("ON" if have_ingredients_filter else "OFF") style "green_to_blue"
+                        
+                            
+                        textbutton "Have required skills/level" text_style "red_white_highlight_text" action ToggleScreenVariable("have_skills_filter")
+                        text ("ON" if have_skills_filter else "OFF") style "green_to_blue"
+                    
+                    add Solid("#404040", xfill=True, ysize=1)
+                    
+                    # Recipes list
                     viewport:
-                        xsize 650
-                        ysize 650
+                        xsize 1500
+                        ysize 1350
                         scrollbars "vertical"
                         mousewheel True
                         
                         vbox:
                             spacing 8
                             
-                            for recipe_id in recipe_database:
+                            # Filter recipes by category and requirements
+                            python:
+                                filtered_recipes = []
+                                category_has_recipes = False
+                                
+                                for recipe_id in recipe_database:
+                                    recipe = recipe_database[recipe_id]
+                                    
+                                    # Filter by category
+                                    if recipe.category != recipe_category:
+                                        continue
+                                        
+                                    can_craft, reason = player_stats.can_craft(recipe_id)
+                                    
+                                    # Apply ingredient filter
+                                    if have_ingredients_filter:
+                                        have_all_ingredients = True
+                                        for item_id, amount in recipe.ingredients.items():
+                                            if player_stats.inventory.get(item_id, 0) < amount:
+                                                have_all_ingredients = False
+                                                break
+                                                
+                                        if not have_all_ingredients:
+                                            continue
+                                    
+                                    # Apply skill filter
+                                    if have_skills_filter and recipe.required_skill:
+                                        if recipe.required_skill not in player_stats.learned_skills or player_stats.learned_skills[recipe.required_skill] < recipe.skill_level:
+                                            continue
+                                    
+                                    # Add recipe to filtered list
+                                    filtered_recipes.append(recipe_id)
+                                    category_has_recipes = True
+                            
+                            # Display no recipes message if needed
+                            if not category_has_recipes:
+                                text "No recipes of this type available." style "inactive_text"
+                            
+                            # Display filtered recipes
+                            for recipe_id in filtered_recipes:
                                 python:
                                     recipe = recipe_database[recipe_id]
                                     can_craft, reason = player_stats.can_craft(recipe_id)
@@ -470,24 +546,53 @@ screen crafting_screen():
                 
                 # Right: Inventory
                 vbox:
-                    xsize 650
+                    xsize 1280
                     text "Your Inventory" style "subheader_text"
                     
+                    # Inventory Category Tabs (matching the main inventory tabs)
+                    hbox:
+                        spacing 10
+                        textbutton "Equippable" action SetScreenVariable("inventory_tab", "equippable") text_style "item_tab_text"
+                        textbutton "Consumables" action SetScreenVariable("inventory_tab", "consumable") text_style "item_tab_text"
+                        textbutton "Plot" action SetScreenVariable("inventory_tab", "plot") text_style "item_tab_text"
+                        textbutton "Misc" action SetScreenVariable("inventory_tab", "misc") text_style "item_tab_text"
+                    
                     viewport:
-                        xsize 650
-                        ysize 650
+                        xsize 1200
+                        ysize 1400
                         scrollbars "vertical"
                         mousewheel True
                         
                         vbox:
                             spacing 5
                             if player_stats.inventory:
-                                for item_id, count in player_stats.inventory.items():
-                                    python:
+                                python:
+                                    # Filter inventory by category
+                                    category_has_items = False
+                                    for item_id in player_stats.inventory:
+                                        if item_id in item_database and item_database[item_id].category == inventory_tab:
+                                            category_has_items = True
+                                            break
+                                
+                                python:
+                                    # Filter and prepare inventory items in Python block
+                                    filtered_inventory = []
+                                    for item_id, count in player_stats.inventory.items():
                                         if item_id in item_database:
-                                            item_name = item_database[item_id].name
+                                            item = item_database[item_id]
+                                            # Only include items that match the selected category
+                                            if item.category == inventory_tab:
+                                                filtered_inventory.append((item.name, count))
                                         else:
-                                            item_name = "Unknown Item"
+                                            # Unknown items go into misc category
+                                            if inventory_tab == "misc":
+                                                filtered_inventory.append(("Unknown Item", count))
+                                
+                                # Display the filtered items
+                                for item_name, count in filtered_inventory:
                                     text "[item_name] (x[count])" style "item_text"
+                                
+                                if not category_has_items:
+                                    text "No items of this type in inventory." style "inactive_text"
                             else:
                                 text "Inventory is empty" style "inactive_text"
