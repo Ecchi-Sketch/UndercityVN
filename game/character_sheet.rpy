@@ -179,13 +179,46 @@ screen player_stats_screen():
                                             item = item_database[item_id]
 
                                         if item.category == inventory_tab:
-                                            hbox:
-                                                text "{} (x{})".format(item.name, count) style "item_text"
-                                                null
-                                                if item.category == "equippable":
-                                                    textbutton "Equip" text_style "inventory_button_text" action Function(player_stats.equip, item_id=item_id)
-                                                elif item.category == "consumable":
-                                                    textbutton "Use" text_style "inventory_button_text" action Function(player_stats.use_consumable, item_id=item_id)
+                                            frame:
+                                                background None
+                                                padding (5, 5)
+                                                vbox:
+                                                    spacing 2
+                                                    hbox:
+                                                        text "{} (x{})".format(item.name, count) style "item_text"
+                                                        null
+                                                        if item.category == "equippable":
+                                                            textbutton "Equip" text_style "inventory_button_text" action Function(player_stats.equip, item_id=item_id)
+                                                        elif item.category == "consumable":
+                                                            textbutton "Use" text_style "inventory_button_text" action Function(player_stats.use_consumable, item_id=item_id)
+                                                    
+                                                    # Create a concise mechanics description
+                                                    $ mechanics_text = ""
+                                                    
+                                                    # Add cost info
+                                                    if hasattr(item, "cost") and item.cost > 0:
+                                                        $ mechanics_text += "Value: {} cogs. ".format(item.cost)
+                                                    
+                                                    # Add slot info for equippables
+                                                    if item.category == "equippable" and hasattr(item, "slot"):
+                                                        $ mechanics_text += "Slot: {}. ".format(item.slot.capitalize())
+                                                    
+                                                    # Add effects info
+                                                    if hasattr(item, "effects") and item.effects:
+                                                        $ mechanics_text += "Effects: "
+                                                        $ effect_count = 0
+                                                        for effect, value in item.effects.items():
+                                                            $ effect_count += 1
+                                                            if effect_count > 1:
+                                                                $ mechanics_text += ", "
+                                                            $ mechanics_text += "{}: {}".format(effect.replace("_", " ").capitalize(), value)
+                                                    
+                                                    # Add tags
+                                                    if hasattr(item, "tags") and item.tags:
+                                                        $ mechanics_text += " (" + ", ".join(item.tags) + ")"
+                                                    
+                                                    # Display mechanics text with a smaller font and different style
+                                                    text "[mechanics_text]" style "description_text" size 18
                                     
                                     if not category_has_items:
                                         text "No items of this type." style "item_text"
@@ -521,15 +554,15 @@ screen crafting_screen():
                                         text "[recipe.description]" style "description_text"
                                         
                                         if recipe.result_item_id in item_database:
-                                            text "Creates: [item_database[recipe.result_item_id].name]" style "item_text"
+                                            text "Creates: [item_database[recipe.result_item_id].name]" style "inactive_text"
                                         
-                                        text "Ingredients:" style "item_text"
+                                        text "Ingredients:" style "subheader_text"
                                         for item_id, amount in recipe.ingredients.items():
                                             python:
                                                 if item_id in item_database:
                                                     item_name = item_database[item_id].name
                                                     has_amount = player_stats.inventory.get(item_id, 0)
-                                                    color = "item_text" if has_amount >= amount else "inactive_text"
+                                                    color = "inactive_text" if has_amount >= amount else "inactive_text"
                                                 else:
                                                     item_name = "Unknown Item"
                                                     has_amount = 0
@@ -538,7 +571,7 @@ screen crafting_screen():
                                         
                                         # FIXED Craft button - no return value, no advancement!
                                         if can_craft:
-                                            textbutton "Craft" action Function(player_stats.craft_item, recipe_id) xalign 0.5
+                                            textbutton "Craft"  action Function(player_stats.craft_item, recipe_id) xalign 0 text_style "craft_text"
                                         else:
                                             text "Cannot craft: [reason]" style "inactive_text" xalign 0.5
                 
@@ -582,15 +615,51 @@ screen crafting_screen():
                                             item = item_database[item_id]
                                             # Only include items that match the selected category
                                             if item.category == inventory_tab:
-                                                filtered_inventory.append((item.name, count))
+                                                filtered_inventory.append((item_id, item, count))
                                         else:
                                             # Unknown items go into misc category
                                             if inventory_tab == "misc":
-                                                filtered_inventory.append(("Unknown Item", count))
+                                                filtered_inventory.append(("unknown", None, count))
                                 
                                 # Display the filtered items
-                                for item_name, count in filtered_inventory:
-                                    text "[item_name] (x[count])" style "item_text"
+                                for item_id, item, count in filtered_inventory:
+                                    frame:
+                                        background None
+                                        padding (5, 5)
+                                        vbox:
+                                            spacing 2
+                                            if item:
+                                                text "[item.name] (x[count])" style "item_text"
+                                                
+                                                # Create a concise mechanics description
+                                                $ mechanics_text = ""
+                                                
+                                                # Add cost info
+                                                if item.cost > 0:
+                                                    $ mechanics_text += "Value: {} cogs. ".format(item.cost)
+                                                
+                                                # Add slot info for equippables
+                                                if item.category == "equippable" and hasattr(item, "slot"):
+                                                    $ mechanics_text += "Slot: {}. ".format(item.slot.capitalize())
+                                                
+                                                # Add effects info
+                                                if hasattr(item, "effects") and item.effects:
+                                                    $ mechanics_text += "Effects: "
+                                                    $ effect_count = 0
+                                                    for effect, value in item.effects.items():
+                                                        $ effect_count += 1
+                                                        if effect_count > 1:
+                                                            $ mechanics_text += ", "
+                                                        $ mechanics_text += "{}: {}".format(effect.replace("_", " ").capitalize(), value)
+                                                
+                                                # Add tags
+                                                if hasattr(item, "tags") and item.tags:
+                                                    $ mechanics_text += " (" + ", ".join(item.tags) + ")"
+                                                
+                                                # Display mechanics text with a smaller font and different style
+                                                text "[mechanics_text]" style "description_text" size 18
+                                            else:
+                                                text "Unknown Item (x[count])" style "item_text"
                                 
                                 if not category_has_items:
                                     text "No items of this type in inventory." style "inactive_text"

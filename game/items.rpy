@@ -24,13 +24,28 @@
 init python:
     # The base class for all items in the game.
     class Item:
+        """Class representing an item in the game."""
         # The 'slot' is now optional, as other categories don't need one.
-        def __init__(self, name, description, category, slot=None, effects=None):
+        def __init__(self, name, description, category="misc", slot=None, effects=None, cost=0, tags=None):
             self.name = name
             self.description = description
             self.category = category # "equippable", "consumable", "plot", "misc"
             self.slot = slot
             self.effects = effects if effects is not None else {}
+            self.cost = cost
+            
+            # Default tags to match the category if not provided
+            if tags is None:
+                if category == "equippable":
+                    self.tags = ["Equippable"]
+                elif category == "consumable":
+                    self.tags = ["Consumable"]
+                elif category == "plot":
+                    self.tags = ["Plot"]
+                else:
+                    self.tags = ["Misc"]
+            else:
+                self.tags = tags
 
     # This dictionary will hold all defined items for easy access.
     item_database = {}
@@ -44,7 +59,9 @@ label initialize_items:
             description="A sharpened piece of scrap metal. It's not much, but it's pointy.",
             category="equippable",
             slot="weapon",
-            effects={"damage": "1d4"}
+            effects={"damage": "1d4"},
+            cost=5,
+            tags=["Equippable", "Weapon", "Melee"]
         )
         
         # --- EQUIPPABLE: ARMOR ---
@@ -53,7 +70,9 @@ label initialize_items:
             description="A leather vest reinforced with scrap metal. Provides basic protection.",
             category="equippable",
             slot="armor",
-            effects={"ac_bonus": 2}
+            effects={"ac_bonus": 2},
+            cost=15,
+            tags=["Equippable", "Armor", "Protection"]
         )
         
         # --- EQUIPPABLE: WEAPONS ---
@@ -62,7 +81,9 @@ label initialize_items:
             description="An improved version of the makeshift shiv with better grip and balance.",
             category="equippable",
             slot="weapon",
-            effects={"damage": "1d6", "atk_bonus": 1}
+            effects={"damage": "1d6", "atk_bonus": 1},
+            cost=10,
+            tags=["Equippable", "Weapon", "Melee", "Advanced"]
         )
         
         # --- CONSUMABLE ---
@@ -70,32 +91,42 @@ label initialize_items:
             name="Healing Salve",
             description="A basic healing item that can restore a small amount of HP.",
             category="consumable",
-            effects={"heal": 10}
+            effects={"heal": 10},
+            cost=8,
+            tags=["Consumable", "Healing", "Medical"]
         )
         
         # --- CRAFTING INGREDIENTS ---
         item_database["scrap_metal"] = Item(
             name="Scrap Metal",
             description="Small pieces of metal scavenged from around the undercity. Useful for crafting.",
-            category="misc"
+            category="misc",
+            cost=3,
+            tags=["Misc", "Crafting", "Material"]
         )
         
         item_database["leather"] = Item(
             name="Leather",
             description="Scraps of leather that can be used for crafting various items.",
-            category="misc"
+            category="misc",
+            cost=5,
+            tags=["Misc", "Crafting", "Material"]
         )
         
         item_database["herb"] = Item(
             name="Common Herb",
             description="A common plant with mild medicinal properties. Used in basic healing items.",
-            category="misc"
+            category="misc",
+            cost=2,
+            tags=["Misc", "Crafting", "Herb", "Medical"]
         )
         
         item_database["cloth"] = Item(
             name="Cloth",
             description="Simple cloth scraps. Useful for crafting and bandaging wounds.",
-            category="misc"
+            category="misc",
+            cost=2,
+            tags=["Misc", "Crafting", "Material"]
         )
 
         item_database["iron_knuckles"] = Item(
@@ -103,7 +134,9 @@ label initialize_items:
             description="Heavy iron knuckles that add significant weight to a punch.",
             category="equippable",
             slot="weapon",
-            effects={"damage": "1d6"}
+            effects={"damage": "1d6"},
+            cost=12,
+            tags=["Equippable", "Weapon", "Melee"]
         )
 
         # --- EQUIPPABLE: ARMOR ---
@@ -112,7 +145,9 @@ label initialize_items:
             description="A heavy leather vest reinforced with scavenged metal plates.",
             category="equippable",
             slot="armor",
-            effects={"ac_bonus": 2}
+            effects={"ac_bonus": 2},
+            cost=15,
+            tags=["Equippable", "Armor", "Protection"]
         )
 
         # --- EQUIPPABLE: ACCESSORIES ---
@@ -121,7 +156,9 @@ label initialize_items:
             description="A crude device that injects a cocktail of stimulants, temporarily boosting vitality.",
             category="equippable",
             slot="accessory",
-            effects={"max_hp_percent_bonus": 0.5}
+            effects={"max_hp_percent_bonus": 0.5},
+            cost=20,
+            tags=["Equippable", "Accessory", "Enhancement"]
         )
         
         # --- CONSUMABLES ---
@@ -129,20 +166,26 @@ label initialize_items:
             name="Healing Draught",
             description="A vial of shimmering green liquid that restores a small amount of health.",
             category="consumable",
-            effects={"heal_amount": 10}
+            effects={"heal_amount": 10},
+            cost=15,
+            tags=["Consumable", "Healing", "Medical", "Potion"]
         )
 
         # --- PLOT ITEMS ---
         item_database["old_sewer_key"] = Item(
             name="Old Sewer Key",
             description="A heavy, rust-covered iron key. Seems important.",
-            category="plot"
+            category="plot",
+            cost=0,
+            tags=["Plot", "Key"]
         )
 
         # --- MISCELLANEOUS ITEMS ---
         item_database["scrap_metal"] = Item(
             name="Scrap Metal",
             description="A handful of twisted metal. Might be useful for crafting or just worth a few cogs.",
-            category="misc"
+            category="misc",
+            cost=3,
+            tags=["Misc", "Crafting", "Material"]
         )
     return

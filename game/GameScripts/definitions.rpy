@@ -53,6 +53,49 @@ python early:
             # Learned Skills
             self.learned_skills = {} # Stores skill IDs and their current level, e.g., {"new_kid_in_town": 1}
             self.active_skills = [] # A list of skill IDs that are currently toggled on.
+            
+        def apply_loadout(self, npc_id):
+            """Apply equipment, skills, and abilities loadout for an NPC"""
+            if npc_id in npc_loadouts:
+                loadout = npc_loadouts[npc_id]
+                
+                # Apply equipment
+                if "equipment" in loadout:
+                    equipment = loadout["equipment"]
+                    
+                    # Equip gear
+                    for slot, item_id in equipment.items():
+                        if slot != "inventory" and item_id is not None:
+                            # Add item to inventory first
+                            self.add_item(item_id)
+                            # Then equip it
+                            self.equip(item_id)
+                    
+                    # Add inventory items
+                    for item_id in equipment.get("inventory", []):
+                        self.add_item(item_id)
+                
+                # Apply skills
+                if "skills" in loadout:
+                    for skill_id, level in loadout["skills"].items():
+                        # First learn the skill at level 1
+                        if skill_id not in self.learned_skills:
+                            self.learned_skills[skill_id] = 1
+                            
+                        # Then level it up to desired level
+                        while self.learned_skills[skill_id] < level:
+                            self.learned_skills[skill_id] += 1
+                
+                # Set active skills
+                if "active_skills" in loadout:
+                    # Reset active skills to only those defined in loadout
+                    self.active_skills = []
+                    for skill_id in loadout["active_skills"]:
+                        if skill_id in self.learned_skills:
+                            self.active_skills.append(skill_id)
+                
+                # Finally recalculate stats to apply all bonuses
+                self.recalculate_stats()
 
         # --- SKILL FUNCTIONS ---
         def learn_skill(self, skill_id):
@@ -258,10 +301,10 @@ style subheader_hover_text is default:
     # You can add other properties like fonts, outlines, etc.
 
 style item_tab_text is default:
-    size 50
-    color "#FFFFFF" # A light blue color for stats
+    size 40
+    color "#aaddff" # A light blue color for stats
     bold True
-    hover_color "#aaddff"
+    hover_color "#ffffff"
     # You can add other properties like fonts, outlines, etc.
 
 style description_text is default:
@@ -280,6 +323,13 @@ style skill_upgrade_text is default:
     size 40
     color "#72aacf" # blue
     bold True
+    # You can add other properties like fonts, outlines, etc.
+
+style craft_text is default:
+    size 40
+    color "#79aa88" # green
+    bold True
+    hover_color "#aaddff"
     # You can add other properties like fonts, outlines, etc.
 
 style red_white_highlight_text is default:
