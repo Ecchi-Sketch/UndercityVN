@@ -46,6 +46,57 @@ label initialize_items:
             slot="weapon",
             effects={"damage": "1d4"}
         )
+        
+        # --- EQUIPPABLE: ARMOR ---
+        item_database["reinforced_vest"] = Item(
+            name="Reinforced Vest",
+            description="A leather vest reinforced with scrap metal. Provides basic protection.",
+            category="equippable",
+            slot="armor",
+            effects={"ac_bonus": 2}
+        )
+        
+        # --- EQUIPPABLE: WEAPONS ---
+        item_database["advanced_shiv"] = Item(
+            name="Advanced Shiv",
+            description="An improved version of the makeshift shiv with better grip and balance.",
+            category="equippable",
+            slot="weapon",
+            effects={"damage": "1d6", "atk_bonus": 1}
+        )
+        
+        # --- CONSUMABLE ---
+        item_database["healing_salve"] = Item(
+            name="Healing Salve",
+            description="A basic healing item that can restore a small amount of HP.",
+            category="consumable",
+            effects={"heal": 10}
+        )
+        
+        # --- CRAFTING INGREDIENTS ---
+        item_database["scrap_metal"] = Item(
+            name="Scrap Metal",
+            description="Small pieces of metal scavenged from around the undercity. Useful for crafting.",
+            category="misc"
+        )
+        
+        item_database["leather"] = Item(
+            name="Leather",
+            description="Scraps of leather that can be used for crafting various items.",
+            category="misc"
+        )
+        
+        item_database["herb"] = Item(
+            name="Common Herb",
+            description="A common plant with mild medicinal properties. Used in basic healing items.",
+            category="misc"
+        )
+        
+        item_database["cloth"] = Item(
+            name="Cloth",
+            description="Simple cloth scraps. Useful for crafting and bandaging wounds.",
+            category="misc"
+        )
 
         item_database["iron_knuckles"] = Item(
             name="Iron Knuckles",

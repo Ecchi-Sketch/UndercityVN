@@ -17,6 +17,12 @@ label Act1_Scene1_intro:
     "You find a healing draught on the ground and pocket it."
     $ player_stats.add_item("scrap_metal", 5)
     "You find scrap metal on the ground and pocket it."
+    $ player_stats.add_item("leather", 3)
+    "You find some leather scraps and pocket them."
+    $ player_stats.add_item("cloth", 3)
+    "You find some cloth scraps and pocket them."
+    $ player_stats.add_item("herb", 4)
+    "You find some herbs growing between the cobblestones and collect them."
     $ player_stats.learn_skill("new_kid_in_town")
     "You acquired the skill: New Kid in Town!"
     $ player_stats.learn_skill("test_skill")

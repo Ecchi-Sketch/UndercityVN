@@ -47,7 +47,7 @@ python early:
             # XP and Leveling
             self.level = 1
             self.base_xp = 0
-            self.skill_xp = 0
+            self.skill_xp = 10000
             self.proficiency_bonus = 2
             
             # Learned Skills
@@ -101,6 +101,56 @@ python early:
                 if "max_hp_percent_bonus" in item.effects:
                     self.max_hp += int(self.base_max_hp * item.effects["max_hp_percent_bonus"])
 
+            # 3. Apply effects from active skills
+            for skill_id in self.active_skills:
+                if skill_id in self.learned_skills:
+                    skill = skill_database[skill_id]
+                    level = self.learned_skills[skill_id]
+                    
+        # --- CRAFTING METHODS ---
+        def can_craft(self, recipe_id):
+            if recipe_id not in recipe_database:
+                return False, "Recipe not found"
+                
+            recipe = recipe_database[recipe_id]
+            
+            # Check if player has required skill (if any)
+            if recipe.required_skill and (
+                recipe.required_skill not in self.learned_skills or 
+                self.learned_skills[recipe.required_skill] < recipe.skill_level
+            ):
+                return False, "Required skill not learned or insufficient level"
+            
+            # Check if player has all ingredients
+            for item_id, amount in recipe.ingredients.items():
+                if item_id not in self.inventory or self.inventory[item_id] < amount:
+                    return False, "Missing ingredients"
+                    
+            return True, "Can craft"
+
+        def craft_item(self, recipe_id):
+            can_craft, reason = self.can_craft(recipe_id)
+            if not can_craft:
+                return  # Exit early if can't craft, return None like toggle_skill
+            
+            recipe = recipe_database[recipe_id]
+            
+            # Remove ingredients
+            for item_id, amount in recipe.ingredients.items():
+                self.inventory[item_id] -= amount
+                if self.inventory[item_id] <= 0:
+                    del self.inventory[item_id]
+            
+            # Add crafted item
+            self.add_item(recipe.result_item_id, recipe.result_amount)
+            
+            # Grant XP for crafting
+            self.gain_xp(skill_amount=10)
+            
+            # TEST: No return value, just like working toggle_skill function
+            
+        # --- STAT CALCULATION CONTINUED ---
+        def _apply_skill_effects(self):
             # 3. Apply effects from active skills
             for skill_id in self.active_skills:
                 if skill_id in self.learned_skills:

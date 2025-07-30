@@ -1,4 +1,4 @@
-﻿# The game starts here. The 'label start:' is the default entry point for a new game.
+# The game starts here. The 'label start:' is the default entry point for a new game.
 label start:
     # We now call the character creation screen first.
     call screen character_creation
@@ -6,10 +6,11 @@ label start:
 
 # This label starts the actual game narrative after creation is complete.
 label game_start:
-    # Initialize the item database and NPC roster.
+    # Initialize the item database, NPC roster, skills, and recipes.
     call initialize_npcs
     call initialize_items
     call initialize_skills
+    call initialize_recipes
 
     menu:
         "Act 1":

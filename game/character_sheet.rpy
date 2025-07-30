@@ -192,49 +192,68 @@ screen player_stats_screen():
                     add Solid("#404040", yfill=True, xsize=1)        
 
 
-                    # --- RIGHT COLUMN (ACTIVE EFFECTS) ---
+                    # --- RIGHT COLUMN (ACTIVE EFFECTS + BUTTONS SECTION) ---
                     vbox:
                         xsize 750
                         spacing 10
-                        text "Active Effects"  style "subheader_text"
-                        null height 5
                         
-                        if player_stats.equipped_items:
-                            for item in player_stats.equipped_items:
-                                python:
-                                    effects_str = []
-                                    for key, value in item.effects.items():
-                                        formatted_effect = "{}: {}".format(key.replace('_', ' ').capitalize(), value)
-                                        if key == "ac_bonus": formatted_effect = "+{} AC".format(value)
-                                        elif key == "max_hp_percent_bonus": formatted_effect = "+{}% Max HP".format(int(value * 100))
-                                        elif key == "damage": formatted_effect = "Damage: {}".format(value)
-                                        elif "_bonus" in key:
-                                            stat_name = key.replace('_bonus', '').upper()
-                                            formatted_effect = "+{} {}".format(value, stat_name)
-                                        effects_str.append(formatted_effect)
-                                    display_effects = ", ".join(effects_str)
+                        # --- SECTION 1: ACTIVE EFFECTS ---
+                        vbox:
+                            text "Active Effects"  style "subheader_text"
+                            null height 5
+                            
+                            if player_stats.equipped_items:
+                                for item in player_stats.equipped_items:
+                                    python:
+                                        effects_str = []
+                                        for key, value in item.effects.items():
+                                            formatted_effect = "{}: {}".format(key.replace('_', ' ').capitalize(), value)
+                                            if key == "ac_bonus": formatted_effect = "+{} AC".format(value)
+                                            elif key == "max_hp_percent_bonus": formatted_effect = "+{}% Max HP".format(int(value * 100))
+                                            elif key == "damage": formatted_effect = "Damage: {}".format(value)
+                                            elif "_bonus" in key:
+                                                stat_name = key.replace('_bonus', '').upper()
+                                                formatted_effect = "+{} {}".format(value, stat_name)
+                                            effects_str.append(formatted_effect)
+                                        display_effects = ", ".join(effects_str)
 
-                                text "Equipped - [item.name]: [display_effects]"  style "description_text"
-                        else:
-                            text "Active - None"  style "inactive_text"
-                            null
+                                    text "Equipped - [item.name]: [display_effects]"  style "description_text"
+                            else:
+                                text "Active - None"  style "inactive_text"
+                                null
 
-                        # --- Passive Skill Effects ---
-                        text "Passive Effects" style "subheader_text"
-                        null height 5
-                        if player_stats.active_skills:
-                            for skill_id in player_stats.active_skills:
-                                python:
-                                    skill = skill_database[skill_id]
-                                    level = player_stats.learned_skills[skill_id]
-                                    display_effects = get_effects_string(skill, level)
-                                text "Passive Benefit - [skill.name]: [display_effects]" style "description_text"
-                        else:
-                            text "Passive - None"  style "inactive_text"
+                        # --- SECTION 2: PASSIVE EFFECTS ---
+                        vbox:
+                            text "Passive Effects" style "subheader_text"
+                            null height 5
+                            if player_stats.active_skills:
+                                for skill_id in player_stats.active_skills:
+                                    python:
+                                        skill = skill_database[skill_id]
+                                        level = player_stats.learned_skills[skill_id]
+                                        display_effects = get_effects_string(skill, level)
+                                    text "Passive Benefit - [skill.name]: [display_effects]" style "description_text"
+                            else:
+                                text "Passive - None"  style "inactive_text"
                         
-                        null height 10
-                        # Button to open the new skills management screen
-                        textbutton "Manage Skills" action Show("learned_skills_screen") xalign 0.5
+                        # Horizontal divider
+                        add Solid("#404040", xfill=True, ysize=1)
+                        
+                        # --- SECTION 3: SKILLS & CRAFTING BUTTONS ---
+                        vbox:
+                            spacing 10
+                            # Skills button
+                            hbox:
+                                xfill True
+                                textbutton "Manage Skills" action ToggleScreen("learned_skills_screen") xalign 0.5
+                            
+                            # Horizontal divider
+                            add Solid("#404040", xfill=True, ysize=1)
+                            
+                            # Crafting button - NEW TEMPLATE-BASED VERSION
+                            hbox:
+                                xfill True
+                                textbutton "Crafting" action ToggleScreen("crafting_screen") xalign 0.5
 
 
             else:
@@ -368,3 +387,107 @@ screen skill_tree_screen(skill_id):
                     null height 5
                     text "Manifestation: [skill.manifestation_name]" bold True style "item_text"
                     text "[skill.manifestation_desc]" style "description_text"
+
+
+
+
+
+
+# Feature-rich crafting screen - FIXED: craft_item no longer returns values
+screen crafting_screen():
+    modal True
+    
+    frame:
+        xalign 0.5
+        yalign 0.5
+        xsize 1400
+        ysize 800
+        padding (20, 20)
+
+        vbox:
+            spacing 10
+            
+            # Header
+            hbox:
+                textbutton "X" text_style "red_white_highlight_text" action Hide("crafting_screen")
+                text "Crafting" style "subheader_text"
+
+            add Solid("#404040", xfill=True, ysize=1)
+
+            # Main content area
+            hbox:
+                spacing 15
+                
+                # Left: Recipe list
+                vbox:
+                    xsize 650
+                    text "Available Recipes" style "subheader_text"
+                    
+                    viewport:
+                        xsize 650
+                        ysize 650
+                        scrollbars "vertical"
+                        mousewheel True
+                        
+                        vbox:
+                            spacing 8
+                            
+                            for recipe_id in recipe_database:
+                                python:
+                                    recipe = recipe_database[recipe_id]
+                                    can_craft, reason = player_stats.can_craft(recipe_id)
+                                
+                                frame:
+                                    padding (10, 10)
+                                    vbox:
+                                        spacing 5
+                                        text "[recipe.name]" style "subheader_text"
+                                        text "[recipe.description]" style "description_text"
+                                        
+                                        if recipe.result_item_id in item_database:
+                                            text "Creates: [item_database[recipe.result_item_id].name]" style "item_text"
+                                        
+                                        text "Ingredients:" style "item_text"
+                                        for item_id, amount in recipe.ingredients.items():
+                                            python:
+                                                if item_id in item_database:
+                                                    item_name = item_database[item_id].name
+                                                    has_amount = player_stats.inventory.get(item_id, 0)
+                                                    color = "item_text" if has_amount >= amount else "inactive_text"
+                                                else:
+                                                    item_name = "Unknown Item"
+                                                    has_amount = 0
+                                                    color = "inactive_text"
+                                            text "- [item_name]: [has_amount]/[amount]" style color
+                                        
+                                        # FIXED Craft button - no return value, no advancement!
+                                        if can_craft:
+                                            textbutton "Craft" action Function(player_stats.craft_item, recipe_id) xalign 0.5
+                                        else:
+                                            text "Cannot craft: [reason]" style "inactive_text" xalign 0.5
+                
+                add Solid("#404040", yfill=True, xsize=1)
+                
+                # Right: Inventory
+                vbox:
+                    xsize 650
+                    text "Your Inventory" style "subheader_text"
+                    
+                    viewport:
+                        xsize 650
+                        ysize 650
+                        scrollbars "vertical"
+                        mousewheel True
+                        
+                        vbox:
+                            spacing 5
+                            if player_stats.inventory:
+                                for item_id, count in player_stats.inventory.items():
+                                    python:
+                                        if item_id in item_database:
+                                            item_name = item_database[item_id].name
+                                        else:
+                                            item_name = "Unknown Item"
+                                    text "[item_name] (x[count])" style "item_text"
+                            else:
+                                text "Inventory is empty" style "inactive_text"
