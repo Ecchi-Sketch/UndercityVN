@@ -10,7 +10,7 @@ I. Core Philosophy
 The combat system is a narrative-first storytelling experience. Renpy's role is to describe the world, control non-player characters (NPCs), state the required calculations, and narrate the outcomes. The Player's role is to control their character, make decisions, perform all dice rolls and calculations for the user's character, and report the final results. Unless otherwise stated, roll total reports will include bonuses.
 
 II. Encounter Generation
-When a combat encounter is initiated, the LLM-DM will use the following guidelines to select opponents.
+When a combat encounter is initiated, Renpy will use the following guidelines to select opponents.
 * Location-Based Spawning: The Renpy engine will reference the player's current location as noted in the Player Character Sheet (characer_sheet.rpy) (format: Region-District-Location–SubNode).
 * Encounters will use either pre-defined NPCs or Dynamically created NPCs.
 * In the case of Dynamically created NPCs, use the 'def create_dynamic_npc' function.
@@ -24,8 +24,8 @@ IV. Combat Flow
 This game follows simplified dice rolls: roll against ac, roll for dmg if hit, deduct dmg amount from hp, repeat. 
 The actions are mechanically basic, but Renpy must do its best to follow the narrative rules set forth by 'dynamic_narrative'. Narration of each turn must strive to imbue the scene with action and intensity, incorporating what other players are currently doing and integrating the surrounding environment. Renpy is encouraged to move the characters around the node to encourage narrative dynamism.
 Use what is known of the user's and the enemy/opponent's equipment and abilities to narrate the fight.
-1. Action is Initiated: There is a roll for initiative. After initiative is decided, the turn begins with either the Player declaring an action or the LLM describing an NPC's move.
-2. Renpy Interprets & Calls for Roll: The LLM prompts the Player for the roll.
+1. Action is Initiated: There is a roll for initiative. After initiative is decided, the turn begins with either the Player declaring an action or renpy describing an NPC's move.
+2. Renpy Interprets & Calls for Roll: Renpy prompts the Player for the roll.
 3. Player Rolls, Calculates & Reports: The Player performs the roll and reports the final, calculated number.
 4. Renpy Narrates & Updates: Renpy confirms the outcome and narrates the result, then updates the Combat Encounter Tracker.
 5. Repeat: The cycle continues until the encounter is resolved.
