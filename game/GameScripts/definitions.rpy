@@ -300,6 +300,27 @@ style subheader_text is default:
 #    hover_color "#aaddff"
     # You can add other properties like fonts, outlines, etc.
 
+style combat_mechanical_text is default:
+    size 30
+    color "#FFFFFF" # White
+    bold True
+#    hover_color "#aaddff"
+    # You can add other properties like fonts, outlines, etc.
+
+style combat_mechanical_text_sub1 is default:
+    size 25
+    color "#FFFFFF" # White
+    bold False
+#    hover_color "#aaddff"
+    # You can add other properties like fonts, outlines, etc.
+
+style combat_stats_text is default:
+    size 25
+    color "#FFFFFF" # White
+    bold True
+#    hover_color "#aaddff"
+    # You can add other properties like fonts, outlines, etc.
+
 style subheader_hover_text is default:
     size 40
     color "#898989" # gray

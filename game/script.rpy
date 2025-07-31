@@ -16,6 +16,8 @@ label game_start:
     menu:
         "Act 1":
             jump Act1_Scene1_intro
+        "Test Combat Interface":
+            jump test_combat
         "Choice 2 Description":
             jump Choice_2_Result
         "Choice 3 Description":
