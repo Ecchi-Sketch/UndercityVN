@@ -1,28 +1,156 @@
 #============================================================================
-# COMBAT ENCOUNTER GUI SYSTEM
-#============================================================================
-# This screen provides the main combat interface, displaying:
-# - All participant stats and status
-# - Initiative/turn order
-# - Available combat actions with mechanic previews
-# - Roll interface for d20 system
-# - Combat narration and environmental context
+# COMBAT ENCOUNTER GUI SYSTEM (Refactored for Manual Input with Bonus Breakdown)
 #============================================================================
 
-# Combat state variables
-default combat_participants = []
-default current_turn_index = 0
-default combat_round = 1
-default combat_log = []
-default pending_roll = None
-default pending_damage_roll = None
-default selected_action = None
-default selected_target = None
+init python:
+    # This variable will store the text entered by the user for their roll.
+    manual_roll_input = ""
 
-# Main combat encounter screen
+    def get_player_bonuses_and_effects():
+        """
+        Calculates and breaks down the applicable bonuses and active effects for the player's current action.
+        Returns a list of bonus components, the total bonus value, and a list of active effect strings.
+        """
+        combat_manager = get_combat_manager()
+        if not combat_manager:
+            return [], 0, []
+
+        actor = combat_manager.get_current_combatant()
+        if not actor or not actor.character_data.is_player:
+            return [], 0, []
+
+        bonus_components = []
+        total_bonus = 0
+        active_effects = []
+
+        # Gather active effects from equipped items
+        for item in actor.character_data.equipped_items:
+            effect_strings = []
+            for effect, value in item.effects.items():
+                if "damage" not in effect: # Don't show the base damage die as an effect
+                    effect_strings.append("{}: +{}".format(effect.replace("_", " ").title(), value))
+            if effect_strings:
+                active_effects.append("{}: {}".format(item.name, ", ".join(effect_strings)))
+        
+        # Gather active effects from skills
+        for skill_id in actor.character_data.active_skills:
+            if skill_id in skill_database:
+                skill = skill_database[skill_id]
+                level = actor.character_data.learned_skills.get(skill_id, 1)
+                
+                # Simplified effect string generation for skills
+                effect_strings = []
+                for effect, base_value in skill.base_effects.items():
+                    per_level_value = skill.per_level_effects.get(effect, 0)
+                    total_skill_bonus = base_value + (per_level_value * (level - 1))
+                    effect_strings.append("{}: +{}".format(effect.replace("_", " ").title(), total_skill_bonus))
+                
+                if effect_strings:
+                    active_effects.append("{}: {}".format(skill.name, ", ".join(effect_strings)))
+
+
+        # Determine bonus for an ATTACK roll
+        if combat_manager.combat_state == 'awaiting_player_roll':
+            ability_mod = get_ability_modifier(actor.character_data.strength)
+            bonus_components.append(("Strength Bonus", ability_mod))
+
+            prof_bonus = actor.character_data.proficiency_bonus
+            bonus_components.append(("Proficiency Bonus", prof_bonus))
+
+            other_bonuses = actor.character_data.atk_bonus
+            if other_bonuses != 0:
+                bonus_components.append(("Other Bonuses (Skills/Items)", other_bonuses))
+
+            total_bonus = ability_mod + prof_bonus + other_bonuses
+            return bonus_components, total_bonus, active_effects
+        
+        # Determine bonus for a DAMAGE roll
+        elif combat_manager.combat_state == 'awaiting_damage_roll':
+            ability_mod = get_ability_modifier(actor.character_data.strength)
+            bonus_components.append(("Strength Bonus", ability_mod))
+            
+            other_bonuses = actor.character_data.dmg_bonus
+            if other_bonuses != 0:
+                bonus_components.append(("Other Bonuses (Skills/Items)", other_bonuses))
+
+            total_bonus = ability_mod + other_bonuses
+            return bonus_components, total_bonus, active_effects
+
+        return [], 0, []
+
+
+    def ui_select_attack_action():
+        combat_manager = get_combat_manager()
+        if not combat_manager or combat_manager.combat_state != 'active': return
+        actor = combat_manager.get_current_combatant()
+        target = next((p for p in combat_manager.turn_order if p.id != actor.id and not p.is_defeated()), None)
+        if not target: return
+        weapon = next((item for item in actor.character_data.equipped_items if item.slot == 'weapon'), None)
+        if not weapon: return
+        
+        combat_manager.combat_state = 'awaiting_player_roll'
+        combat_manager.pending_action = {"type": "attack", "actor": actor, "target": target, "weapon": weapon}
+        prompt_message = "Player, attack {}.".format(target.get_name())
+        combat_manager._log_event({"event_type": "prompt", "message": prompt_message})
+
+    def ui_process_player_d20_roll(total_attack_roll, roll_type=None):
+        combat_manager = get_combat_manager()
+        if not combat_manager or combat_manager.combat_state != 'awaiting_player_roll': return
+        pending = combat_manager.pending_action
+        if pending and pending["type"] == "attack":
+            combat_manager.resolve_attack(
+                actor=pending["actor"],
+                target=pending["target"],
+                weapon=pending["weapon"],
+                total_attack_roll=total_attack_roll,
+                roll_type=roll_type
+            )
+
+    def ui_process_player_damage_roll(total_damage):
+        combat_manager = get_combat_manager()
+        if not combat_manager or combat_manager.combat_state != 'awaiting_damage_roll': return
+        pending = combat_manager.pending_action
+        if pending and pending["type"] == "attack":
+            combat_manager.resolve_damage(
+                actor=pending["actor"],
+                target=pending["target"],
+                weapon=pending["weapon"],
+                total_damage=total_damage,
+                is_critical=pending.get("is_critical", False)
+            )
+            combat_manager.pending_action = None
+
+    def ui_resolve_finishing_blow(choice):
+        combat_manager = get_combat_manager()
+        if not combat_manager or combat_manager.combat_state != 'awaiting_finishing_blow': return
+        combat_manager.resolve_finishing_blow(choice)
+
+    def submit_manual_roll(roll_type=None):
+        global manual_roll_input
+        combat_manager = get_combat_manager()
+        if not combat_manager: return
+
+        try:
+            roll_value = int(manual_roll_input)
+            
+            if combat_manager.combat_state == 'awaiting_player_roll':
+                ui_process_player_d20_roll(roll_value, roll_type=roll_type)
+            elif combat_manager.combat_state == 'awaiting_damage_roll':
+                ui_process_player_damage_roll(roll_value)
+            
+            manual_roll_input = ""
+            renpy.restart_interaction()
+
+        except (ValueError, TypeError):
+            manual_roll_input = ""
+            renpy.restart_interaction()
+
+
 screen combat_encounter():
     modal True
     
+    $ combat_manager = get_combat_manager()
+
     frame:
         style "combat_main_frame"
         xsize 3850
@@ -30,746 +158,255 @@ screen combat_encounter():
         xalign 0.5
         yalign 0.5
         
-        hbox:
-            spacing 20
-            xfill True
-            
-            # LEFT PANEL: PARTICIPANT STATS
-            frame:
-                style "combat_stats_frame"
-                xsize 600
-                ysize 1675
-                
-                vbox:
-                    spacing 10
-                    
-                    # Combat info header
-                    frame:
-                        xsize 580
-                        background "#333333"
-                        padding (10, 10)
-                        
-                        vbox:
-                            spacing 5
-                            text "ROUND [combat_round]" color "#FFD700" size 24 bold True
-                            
-                            if combat_participants:
-                                $ current_participant = combat_participants[current_turn_index]
-                                text "[current_participant.name]'S TURN" style "combat_mechanical_text"
-                            
-                            text "INITIATIVE ORDER:" style "combat_mechanical_text_sub1"
-                            
-                            for i, participant in enumerate(combat_participants):
-                                $ is_current = (i == current_turn_index)
-                                $ status_color = "#FFD700" if is_current else "#FFFFFF"
-                                
-                                hbox:
-                                    spacing 10
-                                    if is_current:
-                                        text "►" color "#FFD700" size 20
-                                    else:
-                                        text " " size 20
-                                    text "[participant.name]" color status_color size 18
-                    
-                    # Participant stats viewport
-                    viewport:
-                        xsize 580
-                        ysize 1375
-                        scrollbars "vertical"
-                        mousewheel True
-                        
-                        vbox:
-                            spacing 15
-                            
-                            for participant in combat_participants:
-                                frame:
-                                    background "#333333"
-                                    padding (10, 10)
-                                    xsize 560
-                                    
-                                    vbox:
-                                        spacing 8
-                                        
-                                        # Name and status
-                                        hbox:
-                                            spacing 10
-                                            text "[participant.name]" color "#FFFFFF" size 20 bold True
-                                            if participant == player_stats:
-                                                text "(YOU)" color "#00FF00" size 14
-                                        
-                                        # Health bar
-                                        $ hp_percent = float(participant.hp) / float(participant.max_hp)
-                                        $ hp_color = "#00FF00" if hp_percent > 0.6 else "#FFFF00" if hp_percent > 0.3 else "#FF0000"
-                                        
-                                        hbox:
-                                            spacing 5
-                                            text "HP:" style "combat_stats_text"
-                                            bar:
-                                                value participant.hp
-                                                range participant.max_hp
-                                                xsize 200
-                                                ysize 20
-                                                left_bar hp_color
-                                                right_bar "#333333"
-                                            text "[participant.hp]/[participant.max_hp]" color "#FFFFFF" size 24
-                                        
-                                        # Combat stats
-                                        grid 2 4:
-                                            spacing 5
-                                            text "AC:" style "combat_stats_text"
-                                            text "[participant.ac]" style "combat_mechanical_text_sub1"
-                                            text "ATK:" style "combat_stats_text"
-                                            text "+[participant.atk_bonus]" style "combat_mechanical_text_sub1"
-                                            text "DMG:" style "combat_stats_text"
-                                            text "+[participant.dmg_bonus]" style "combat_mechanical_text_sub1"
-                                            text "PROF:" style "combat_stats_text"
-                                            text "+[participant.proficiency_bonus]" style "combat_mechanical_text_sub1"
-                                        
-                                        # Equipment
-                                        if hasattr(participant, 'status_effects') and participant.status_effects:
-                                            text "STATUS:" color "#FF6600" size 24 bold True
-                                            for effect in participant.status_effects:
-                                                text "• [effect]" color "#FFAA66" size 24
-            
-            # CENTER PANEL: SPLIT BETWEEN NARRATIVE AND MECHANICAL LOG
-            vbox:
+        if combat_manager:
+            hbox:
                 spacing 20
-                xsize 2560
+                xfill True
                 
-                 
-                # BOTTOM HALF: MECHANICAL COMBAT LOG
+                # --- LEFT PANEL: PARTICIPANT STATS (Unchanged) ---
                 frame:
-                    style "combat_log_frame"
-                    xsize 2560
-                    ysize 600
-                    
+                    style "combat_stats_frame"
+                    xsize 600
+                    ysize 1675
                     vbox:
                         spacing 10
-                        
-                        text "COMBAT LOG (MECHANICAL)" style "combat_mechanical_text" xalign 0.5
-                        
+                        frame:
+                            xsize 580
+                            background "#333333"
+                            padding (10, 10)
+                            vbox:
+                                spacing 5
+                                text "ROUND [combat_manager.round_number]" color "#FFD700" size 24 bold True
+                                $ current_combatant = combat_manager.get_current_combatant()
+                                if current_combatant:
+                                    text "[current_combatant.get_name()]'S TURN" style "combat_mechanical_text"
+                                text "INITIATIVE ORDER:" style "combat_mechanical_text_sub1"
+                                for i, participant in enumerate(combat_manager.turn_order):
+                                    $ is_current = (i == combat_manager.current_turn_index)
+                                    $ status_color = "#FFD700" if is_current else "#FFFFFF"
+                                    hbox:
+                                        spacing 10
+                                        if is_current:
+                                            text "►" color "#FFD700" size 20
+                                        else:
+                                            text " " size 20
+                                        text "[participant.get_name()]" color status_color size 18
                         viewport:
-                            xsize 2540
-                            ysize 550
+                            xsize 580
+                            ysize 1375
                             scrollbars "vertical"
                             mousewheel True
-                            
                             vbox:
-                                spacing 10
-                                
-                                # Display mechanical log from enhanced combat controller
-                                if hasattr(enhanced_combat_controller, 'combat_log') and enhanced_combat_controller.combat_log:
-                                    for log_entry in enhanced_combat_controller.combat_log:
-                                        frame:
-                                            background "#333333"
-                                            padding (10, 10)
-                                            xsize 2480
-                                            
-                                            vbox:
-                                                spacing 5
-                                                
-                                                # Display formatted mechanical information
-                                                $ formatted_display = log_entry.format_mechanical_display()
-                                                for line in formatted_display.split("\n"):
-                                                    if line.strip():
-                                                        # Color code different types of information
-                                                        if "Round" in line and "|" in line:
-                                                            text "[line]" color "#FFD700" size 20 bold True
-                                                        elif "Roll:" in line:
-                                                            text "[line]" color "#00CCFF" size 18
-                                                        elif "Damage:" in line:
-                                                            text "[line]" color "#FF6666" size 18
-                                                        elif "HIT" in line or "CRITICAL" in line:
-                                                            text "[line]" color "#00FF00" size 18
-                                                        elif "MISS" in line or "FUMBLE" in line:
-                                                            text "[line]" color "#FF9999" size 18
-                                                        else:
-                                                            text "[line]" color "#FFFFFF" size 18
-                                else:
-                                    # Placeholder for when no combat has started
+                                spacing 15
+                                for participant in combat_manager.turn_order:
                                     frame:
                                         background "#333333"
-                                        padding (15, 15)
-                                        xsize 2480
-                                        
-                                        text "Combat has not yet begun. Mechanical details will appear here during fights." color "#888888" size 20 italic True xalign 0.5 text_align 0.5
+                                        padding (10, 10)
+                                        xsize 560
+                                        vbox:
+                                            spacing 8
+                                            hbox:
+                                                spacing 10
+                                                text "[participant.get_name()]" color "#FFFFFF" size 20 bold True
+                                                if getattr(participant.character_data, 'is_player', False):
+                                                    text "(YOU)" color "#00FF00" size 14
+                                            $ hp_percent = float(participant.current_hp) / float(participant.character_data.max_hp) if participant.character_data.max_hp > 0 else 0
+                                            $ hp_color = "#00FF00" if hp_percent > 0.6 else "#FFFF00" if hp_percent > 0.3 else "#FF0000"
+                                            hbox:
+                                                spacing 5
+                                                text "HP:" style "combat_stats_text"
+                                                bar:
+                                                    value participant.current_hp
+                                                    range participant.character_data.max_hp
+                                                    xsize 200
+                                                    ysize 20
+                                                    left_bar hp_color
+                                                    right_bar "#333333"
+                                                text "[participant.current_hp]/[participant.character_data.max_hp]" color "#FFFFFF" size 24
+                                            grid 2 4:
+                                                spacing 5
+                                                text "AC:" style "combat_stats_text"
+                                                text "[participant.get_ac()]" style "combat_mechanical_text_sub1"
+                                                text "ATK:" style "combat_stats_text"
+                                                text "+[participant.character_data.atk_bonus]" style "combat_mechanical_text_sub1"
+                                                text "DMG:" style "combat_stats_text"
+                                                text "+[participant.character_data.dmg_bonus]" style "combat_mechanical_text_sub1"
+                                                text "PROF:" style "combat_stats_text"
+                                                text "+[participant.character_data.proficiency_bonus]" style "combat_mechanical_text_sub1"
+                                            if participant.status_effects:
+                                                text "STATUS:" color "#FF6600" size 24 bold True
+                                                for effect in participant.status_effects:
+                                                    text "• [effect]" color "#FFAA66" size 24
+                
+                # --- CENTER PANEL: LOGS (Unchanged) ---
+                vbox:
+                    spacing 20
+                    xsize 2560
+                    frame:
+                        style "combat_log_frame"
+                        xsize 2560
+                        ysize 828
+                        vbox:
+                            spacing 10
+                            text "NARRATIVE LOG" style "combat_mechanical_text" xalign 0.5
+                            viewport:
+                                id "narrative_log_vp"
+                                xsize 2540
+                                ysize 778
+                                scrollbars "vertical"
+                                mousewheel True
+                                yinitial 1.0
+                                vbox:
+                                    spacing 10
+                                    if combat_manager.narrative_log:
+                                        for entry in combat_manager.narrative_log:
+                                            text "[entry]" color "#E0E0E0" size 22
+                                    else:
+                                        text "Narrative descriptions will appear here..." color "#888888" size 20 italic True xalign 0.5
+                    frame:
+                        style "combat_log_frame"
+                        xsize 2560
+                        ysize 827
+                        vbox:
+                            spacing 10
+                            text "COMBAT LOG (MECHANICAL)" style "combat_mechanical_text" xalign 0.5
+                            viewport:
+                                id "mechanical_log_vp"
+                                xsize 2540
+                                ysize 777
+                                scrollbars "vertical"
+                                mousewheel True
+                                yinitial 1.0
+                                vbox:
+                                    spacing 10
+                                    if combat_manager.mechanical_log:
+                                        for log_entry in combat_manager.mechanical_log:
+                                            $ formatted_text = format_mechanical_log_entry(log_entry)
+                                            text "[formatted_text]" color "#FFFFFF" size 18
+                                    else:
+                                        text "Mechanical details will appear here..." color "#888888" size 20 italic True xalign 0.5
+                
+                # --- RIGHT PANEL: MANUAL ROLL INPUT (Redesigned with Active Effects) ---
+                frame:
+                    style "combat_log_frame"
+                    xsize 600
+                    ysize 1675
+                    xalign 1.0
                     
-                   
+                    vbox:
+                        xalign 0.5
+                        yalign 0.5
+                        spacing 15
+
+                        if combat_manager.combat_state in ['awaiting_player_roll', 'awaiting_damage_roll']:
+                            
+                            $ bonus_components, total_bonus, active_effects = get_player_bonuses_and_effects()
+                            
+                            if bonus_components:
+                                text "Your Bonuses:" size 24 color "#FFFFFF" xalign 0.5
+                                frame:
+                                    background "#1a1a1a"
+                                    padding (10, 10)
+                                    vbox:
+                                        xsize 400
+                                        spacing 5
+                                        for name, value in bonus_components:
+                                            hbox:
+                                                text name color "#CCCCCC"
+                                                xfill True
+                                                text "+ [value]" color "#00FF00"
+                                
+                                text "Total Bonus:" size 24 color "#FFFFFF" xalign 0.5
+                                text "+ [total_bonus]" size 36 color "#00FF00" xalign 0.5 bold True
+                            
+                            if active_effects:
+                                text "Active Effects:" size 24 color "#FFFFFF" xalign 0.5
+                                frame:
+                                    background "#1a1a1a"
+                                    padding (10, 10)
+                                    vbox:
+                                        xsize 400
+                                        spacing 5
+                                        for effect_string in active_effects:
+                                            text effect_string color "#aaddff" size 18
+                            
+                            # MODIFIED: Prompt now changes for critical hits.
+                            if combat_manager.combat_state == 'awaiting_damage_roll' and combat_manager.pending_action.get("is_critical", False):
+                                $ final_prompt = "CRITICAL HIT! Roll DOUBLE damage dice, add your bonus of +{}, and enter the TOTAL.".format(total_bonus)
+                            else:
+                                $ final_prompt = "Roll your dice, add your bonus of +{}, and enter the TOTAL.".format(total_bonus)
+                            
+                            text "[final_prompt]" size 24 color "#FFD700" xalign 0.5
+
+                            input value VariableInputValue("manual_roll_input") length 3 allow "0123456789" style "input" text_align 0.5 size 40
+
+                            if combat_manager.combat_state == 'awaiting_player_roll':
+                                hbox:
+                                    xalign 0.5
+                                    spacing 15
+                                    textbutton "Submit Total" action Function(submit_manual_roll)
+                                    textbutton "Nat 20!" action Function(submit_manual_roll, "nat20") background "#FFD700" text_color "#000000"
+                                    textbutton "Nat 1..." action Function(submit_manual_roll, "nat1") background "#AA0000"
+                            else:
+                                textbutton "Submit Total" action Function(submit_manual_roll) xalign 0.5
+                        
+                        else:
+                            text "Awaiting combat action..." size 22 color "#888888" xalign 0.5
             
-            # RIGHT PANEL: ENHANCED DICE INTERFACE
+            # --- FINISHING BLOW OVERLAY (Unchanged) ---
+            if combat_manager.combat_state == 'awaiting_finishing_blow':
+                frame:
+                    background "#000000a0"
+                    xfill True
+                    yfill True
+                    vbox:
+                        xalign 0.5 yalign 0.5 spacing 20
+                        text "Deliver a Finishing Blow?" style "subheader_text" size 40
+                        hbox:
+                            spacing 50
+                            textbutton "Lethal" action Function(ui_resolve_finishing_blow, "lethal")
+                            textbutton "Non-Lethal" action Function(ui_resolve_finishing_blow, "nonlethal")
+
+            # --- BOTTOM PANEL: ACTION BUTTONS (Unchanged) ---
             frame:
-                style "combat_log_frame"
-                xsize 600
-                ysize 1675
-                xalign 1.0
-                
-                # Use the new enhanced dice interface
-                use enhanced_dice_interface
-        
-        # BOTTOM PANEL: ACTION BUTTONS  
-        frame:
-            style "combat_action_frame"
-            xsize 5120
-            ysize 300
-            xalign 0.5
-            ypos 1575
-            
-            hbox:
-                spacing 50
+                style "combat_action_frame"
+                xsize 5120
+                ysize 300
                 xalign 0.5
-                yalign 0.5
-                
-                # Combat Action Buttons
+                ypos 1575
                 hbox:
-                    spacing 40
+                    spacing 50
                     xalign 0.5
                     yalign 0.5
-                    
-                    textbutton "ATTACK":
-                        background "#AA0000"
-                        hover_background "#CC3333"
-                        text_color "#FFFFFF"
-                        text_hover_color "#FFFF00"
-                        text_size 24
-                        xsize 200
-                        ysize 60
-                        action Function(select_combat_action, "attack")
-                    
-                    textbutton "DEFEND":
-                        background "#0066AA"
-                        hover_background "#3388CC"
-                        text_color "#FFFFFF"
-                        text_hover_color "#FFFF00"
-                        text_size 24
-                        xsize 200
-                        ysize 60
-                        action Function(select_combat_action, "defend")
-                    
-                    textbutton "UTILITY":
-                        background "#6600AA"
-                        hover_background "#8833CC"
-                        text_color "#FFFFFF"
-                        text_hover_color "#FFFF00"
-                        text_size 24
-                        xsize 200
-                        ysize 60
-                        action Function(select_combat_action, "utility")
-                    
-                    textbutton "ITEM":
-                        background "#AA6600"
-                        hover_background "#CC8833"
-                        text_color "#FFFFFF"
-                        text_hover_color "#FFFF00"
-                        text_size 24
-                        xsize 200
-                        ysize 60
-                        action Function(select_combat_action, "item")
-        # Vertical control buttons with hover effects
-        hbox:
-            xpos 7
-            ypos 1600
-            spacing 30
+                    hbox:
+                        spacing 40
+                        xalign 0.5
+                        yalign 0.5
+                        $ can_act = (combat_manager.get_current_combatant().character_data == player_stats and combat_manager.combat_state == 'active')
+                        textbutton "ATTACK" background "#AA0000" hover_background "#CC3333" text_color "#FFFFFF" text_hover_color "#FFFF00" text_size 24 xsize 200 ysize 60 action Function(ui_select_attack_action) sensitive can_act
+                        textbutton "DEFEND" background "#0066AA" hover_background "#3388CC" text_color "#FFFFFF" text_hover_color "#FFFF00" text_size 24 xsize 200 ysize 60 action NullAction() sensitive can_act
+                        textbutton "UTILITY" background "#6600AA" hover_background "#8833CC" text_color "#FFFFFF" text_hover_color "#FFFF00" text_size 24 xsize 200 ysize 60 action NullAction() sensitive can_act
+                        textbutton "ITEM" background "#AA6600" hover_background "#CC8833" text_color "#FFFFFF" text_hover_color "#FFFF00" text_size 24 xsize 200 ysize 60 action NullAction() sensitive can_act
             
-            textbutton "END TURN":
-                background "#666666"
-                hover_background "#888888"
-                text_color "#FFFFFF"
-                text_hover_color "#FFFF00"
-                text_size 22
-                xsize 175
-                ysize 50
-                action Function(handle_end_turn)
-            
-            textbutton "FLEE COMBAT":
-                background "#AA0000"
-                hover_background "#CC3333"
-                text_color "#FFFFFF"
-                text_hover_color "#FFFF00"
-                text_size 22
-                xsize 180
-                ysize 50
-                action Function(attempt_combat_escape)
-            
-            textbutton "EXIT COMBAT":
-                background "#333333"
-                hover_background "#555555"
-                text_color "#FFFFFF"
-                text_hover_color "#FFFF00"
-                text_size 22
-                xsize 175
-                ysize 50
-                action Return()
-
-# Combat system functions
-init python:
-    def select_combat_action(action_type):
-        """Handle combat action selection with enhanced combat system"""
-        global selected_action, selected_target, enhanced_combat_controller
-        
-        # Initialize enhanced combat controller with current participants if needed
-        if not hasattr(store, 'enhanced_combat_controller') or store.enhanced_combat_controller is None:
-            store.enhanced_combat_controller = CombatController()
-            enhanced_combat_controller = store.enhanced_combat_controller
-        else:
-            enhanced_combat_controller = store.enhanced_combat_controller
-        
-        # Ensure controller is initialized with current participants
-        if not enhanced_combat_controller.participants and combat_participants:
-            enhanced_combat_controller.initialize_combat(combat_participants)
-        
-        # Determine weapon for attack actions
-        weapon = None
-        if action_type == "attack" and hasattr(player_stats, 'equipped_items') and player_stats.equipped_items:
-            for item in player_stats.equipped_items:
-                if hasattr(item, 'category') and item.category == "equippable" and getattr(item, 'slot', '') == "weapon":
-                    weapon = item
-                    break
-        
-        if action_type == "attack":
-            # Set up weapon attack action
-            action_data = {"type": "weapon_attack", "weapon": weapon}
-            # Auto-target first available enemy
-            target = get_first_enemy_target()
-            if target:
-                selected_action = action_data
-                selected_target = target
-                # Use the enhanced system's confirm_action function
-                confirm_action(action_data, target)
-        elif action_type == "defend":
-            # Set up defend action
-            action_data = {"type": "defend"}
-            selected_action = action_data
-            # Use the enhanced system's confirm_action function  
-            confirm_action(action_data, None)
-        elif action_type == "utility":
-            # Set up escape action
-            action_data = {"type": "escape"}
-            selected_action = action_data
-            # Use the enhanced system's confirm_action function
-            confirm_action(action_data, None)
-        elif action_type == "item":
-            # Set up item action (placeholder for now)
-            action_data = {"type": "item"}
-            selected_action = action_data
-            # Just use select_action for now since item usage isn't fully implemented
-            select_action(action_data)
-    
-    def get_first_enemy_target():
-        """Get the first available enemy target"""
-        for participant in combat_participants:
-            if participant != player_stats and getattr(participant, 'hp', 0) > 0:
-                return participant
-        return None
-    
-    def initialize_enhanced_combat_if_needed():
-        """Initialize enhanced combat controller if needed"""
-        global enhanced_combat_controller
-        if enhanced_combat_controller is None:
-            # Import the controller class
-            enhanced_combat_controller = CombatController()
-            if combat_participants:
-                enhanced_combat_controller.initialize_combat(combat_participants)
-    
-    def handle_end_turn():
-        """Handle end turn button logic"""
-        if not combat_participants or current_turn_index >= len(combat_participants):
-            return
-        
-        # Initialize enhanced combat controller if needed
-        initialize_enhanced_combat_if_needed()
-        
-        current_participant = combat_participants[current_turn_index]
-        if current_participant == player_stats:
-            # Use enhanced system for turn handling
-            if hasattr(enhanced_combat_controller, 'advance_turn'):
-                enhanced_combat_controller.advance_turn()
-                sync_combat_state()
-            else:
-                end_player_turn()
-    
-    def process_npc_turn():
-        """Process NPC turn with simple AI"""
-        if not combat_participants or current_turn_index >= len(combat_participants):
-            return
-        
-        current_npc = combat_participants[current_turn_index]
-        if current_npc == player_stats:
-            return
-        
-        # Simple AI: attack player
-        target = player_stats
-        weapon = current_npc.equipped_items[0] if current_npc.equipped_items else None
-        
-        import random
-        attack_roll = random.randint(1, 20)
-        str_mod = (current_npc.strength - 10) // 2
-        attack_total = attack_roll + current_npc.atk_bonus + str_mod
-        
-        weapon_name = weapon.name if weapon else "bare hands"
-        
-        if attack_roll == 1:
-            log_message = f"{current_npc.name} critically fails with {weapon_name}!"
-        elif attack_total >= target.ac:
-            if weapon:
-                damage_dice = weapon.effects.get("damage", "1d4")
-                damage = roll_damage_dice(damage_dice) + str_mod
-            else:
-                damage = 1 + str_mod
-            
-            damage = max(1, damage)
-            target.hp = max(0, target.hp - damage)
-            
-            if attack_roll == 20:
-                log_message = f"CRITICAL! {current_npc.name} hits {target.name} for {damage} damage!"
-            else:
-                log_message = f"{current_npc.name} hits {target.name} for {damage} damage!"
-        else:
-            log_message = f"{current_npc.name} misses {target.name}!"
-        
-        combat_log.append(log_message)
-        end_turn()
-    
-    def roll_damage_dice(dice_string):
-        """Roll damage dice"""
-        import random
-        if 'd' not in dice_string:
-            return int(dice_string)
-        
-        num_dice, die_size = dice_string.split('d')
-        total = 0
-        for _ in range(int(num_dice)):
-            total += random.randint(1, int(die_size))
-        return total
-    
-    def execute_roll(roll_data):
-        """Execute pending roll"""
-        import random
-        
-        action_data = roll_data["action"]
-        target = roll_data["target"]
-        d20_result = random.randint(1, 20)
-        
-        if action_data["type"] in ["weapon_attack", "unarmed_attack"]:
-            str_mod = (player_stats.strength - 10) // 2
-            dex_mod = (player_stats.dexterity - 10) // 2
-            attack_total = d20_result + player_stats.atk_bonus + str_mod
-            
-            # Create enhanced combat narrative entry
-            enhanced_entry = {
-                "action_data": action_data,
-                "actor": player_stats,
-                "target": target,
-                "result": {
-                    "d20_roll": d20_result,
-                    "attack_roll": attack_total,
-                    "hit": attack_total >= target.ac and d20_result != 1
-                }
-            }
-            
-            # Initialize combat_narrative if it doesn't exist
-            if not hasattr(store, 'combat_narrative'):
-                store.combat_narrative = []
-            
-            if d20_result == 1:
-                enhanced_entry["result"]["hit"] = False
-                enhanced_entry["narrative"] = "Critical failure! Something goes terribly wrong..."
-                store.combat_narrative.append(enhanced_entry)
-                combat_log.append("CRITICAL FAILURE!")
-            elif attack_total >= target.ac:
-                # HIT - Prompt player for damage roll
-                if action_data["type"] == "weapon_attack":
-                    weapon = action_data["weapon"]
-                    damage_dice = weapon.effects.get("damage", "1d4")
-                    enhanced_entry["narrative"] = f"Roll {damage_dice} + {str_mod} STR for damage!"
-                else:
-                    damage_dice = "1"
-                    enhanced_entry["narrative"] = f"Roll 1 + {str_mod} STR for unarmed damage!"
-                
-                # Set pending damage roll
-                global pending_damage_roll
-                pending_damage_roll = {
-                    "action_data": action_data,
-                    "target": target,
-                    "damage_dice": damage_dice,
-                    "str_mod": str_mod,
-                    "critical": d20_result == 20 or attack_total >= target.ac + 7
-                }
-                
-                enhanced_entry["result"]["pending_damage"] = True
-                store.combat_narrative.append(enhanced_entry)
-                
-                if d20_result == 20 or attack_total >= target.ac + 7:
-                    combat_log.append(f"CRITICAL HIT vs {target.name}! Roll for damage (double dice)!")
-                else:
-                    combat_log.append(f"Hit vs {target.name}! Roll for damage!")
-            else:
-                enhanced_entry["result"]["hit"] = False
-                store.combat_narrative.append(enhanced_entry)
-                combat_log.append(f"Miss! Attack vs {target.name} fails.")
-        
-        store.pending_roll = None
-        end_player_turn()
-    
-    def execute_damage_roll(damage_result):
-        """Execute damage roll with player input"""
-        global pending_damage_roll
-        
-        if not pending_damage_roll:
-            return
-            
-        damage_data = pending_damage_roll
-        target = damage_data["target"]
-        str_mod = damage_data["str_mod"]
-        is_critical = damage_data["critical"]
-        
-        # Calculate total damage
-        total_damage = max(1, damage_result + str_mod)
-        
-        # Apply damage
-        target.hp = max(0, target.hp - total_damage)
-        
-        # Create enhanced combat narrative entry
-        enhanced_entry = {
-            "action_data": damage_data["action_data"],
-            "actor": player_stats,
-            "target": target,
-            "result": {
-                "damage_roll": damage_result,
-                "str_modifier": str_mod,
-                "total_damage": total_damage,
-                "critical": is_critical,
-                "target_remaining_hp": target.hp
-            }
-        }
-        
-        # Initialize combat_narrative if it doesn't exist
-        if not hasattr(store, 'combat_narrative'):
-            store.combat_narrative = []
-        if not hasattr(store, 'combat_narrative_adjustment'):
-            store.combat_narrative_adjustment = ui.adjustment(ranged=ui.adjustment())
-        
-        if is_critical:
-            enhanced_entry["narrative"] = f"CRITICAL! {damage_result} + {str_mod} STR = {total_damage} damage!"
-            store.combat_narrative.append(enhanced_entry)
-            combat_log.append(f"CRITICAL DAMAGE! {total_damage} damage to {target.name}!")
-        else:
-            enhanced_entry["narrative"] = f"{damage_result} + {str_mod} STR = {total_damage} damage!"
-            store.combat_narrative.append(enhanced_entry)
-            combat_log.append(f"{total_damage} damage to {target.name}!")
-        
-        if target.hp <= 0:
-            combat_log.append(f"{target.name} is defeated!")
-        
-        # Clear pending damage roll
-        pending_damage_roll = None
-        end_player_turn()
-    
-    def end_player_turn():
-        """End player turn"""
-        combat_log.append(f"{player_stats.name} ends turn.")
-        end_turn()
-    
-    def end_turn():
-        """Advance to next turn"""
-        global current_turn_index, combat_round
-        current_turn_index += 1
-        if current_turn_index >= len(combat_participants):
-            current_turn_index = 0
-            combat_round += 1
-            combat_log.append(f"=== ROUND {combat_round} ===")
-    
-    def select_action(action_data):
-        """Select an action for the player to take"""
-        global selected_action
-        selected_action = action_data
-        combat_log.append(f"{player_stats.name} prepares {action_data['type'].replace('_', ' ')}...")
-    
-    # Note: confirm_action function is provided by GameScripts/combat_integration.rpy
-    
-    def attempt_combat_escape():
-        """Attempt to flee combat"""
-        import random
-        dex_mod = (player_stats.dexterity - 10) // 2
-        escape_roll = random.randint(1, 20) + dex_mod
-        
-        if escape_roll >= 15:
-            combat_log.append("Successfully fled combat!")
-            renpy.return_statement()
-        else:
-            combat_log.append("Failed to flee!")
-    
-    def create_opponent_attack_entry(attacker, target, attack_roll, damage_roll, hit, weapon=None):
-        """Create enhanced combat narrative entry for opponent attacks"""
-        import random
-        
-        # Get attacker stats
-        str_mod = getattr(attacker, 'str_mod', 0)
-        dex_mod = getattr(attacker, 'dex_mod', 0)
-        prof_bonus = getattr(attacker, 'proficiency_bonus', 2)  # Default for NPCs
-        
-        # Determine attack type and create action data
-        if weapon:
-            action_data = {
-                "type": "weapon_attack",
-                "weapon": weapon
-            }
-            # Calculate d20 result from total
-            is_finesse = weapon.effects.get('finesse', False) if hasattr(weapon, 'effects') else False
-            is_ranged = weapon.effects.get('ranged', False) if hasattr(weapon, 'effects') else False
-            ability_mod = dex_mod if (is_ranged or is_finesse) else str_mod
-            d20_result = attack_roll - ability_mod - prof_bonus
-        else:
-            action_data = {
-                "type": "unarmed_attack"
-            }
-            ability_mod = str_mod
-            d20_result = attack_roll - str_mod - prof_bonus
-        
-        # Ensure d20 result is valid
-        d20_result = max(1, min(20, d20_result))
-        
-        # Create enhanced entry
-        enhanced_entry = {
-            "action_data": action_data,
-            "actor": attacker,
-            "target": target,
-            "result": {
-                "attack_roll": attack_roll,
-                "d20_roll": d20_result,
-                "damage_roll": damage_roll,
-                "hit": hit,
-                "ability_modifier": ability_mod,
-                "proficiency_bonus": prof_bonus
-            }
-        }
-        
-        # Initialize combat_narrative if it doesn't exist
-        if not hasattr(store, 'combat_narrative'):
-            store.combat_narrative = []
-        
-        # Add to combat narrative
-        store.combat_narrative.append(enhanced_entry)
-        
-        # Auto-scroll to bottom
-        if hasattr(store, 'combat_narrative_adjustment'):
-            renpy.restart_interaction()
-    
-    def parse_combat_log_for_attacks():
-        """Parse combat_log for opponent attack patterns and create enhanced entries"""
-        if not hasattr(store, 'combat_log') or not store.combat_log:
-            return
-        
-        # Initialize tracking
-        if not hasattr(store, 'parsed_combat_entries'):
-            store.parsed_combat_entries = set()
-        if not hasattr(store, 'combat_narrative'):
-            store.combat_narrative = []
-        
-        import re
-        
-        # Parse recent combat log entries for opponent attacks
-        for i, entry in enumerate(store.combat_log):
-            # Skip if already parsed
-            entry_id = f"{i}_{entry}"
-            if entry_id in store.parsed_combat_entries:
-                continue
-            
-            # Look for opponent attack patterns
-            # Pattern: "[NPC Name] attacks [Target] for [damage] damage!"
-            attack_pattern = r"^(.+?)\s+attacks\s+(.+?)\s+for\s+(\d+)\s+damage!"
-            hit_match = re.match(attack_pattern, entry)
-            
-            if hit_match:
-                attacker_name = hit_match.group(1).strip()
-                target_name = hit_match.group(2).strip()
-                damage = int(hit_match.group(3))
-                
-                # Find attacker and target objects
-                attacker = None
-                target = None
-                
-                # Check combat participants
-                if hasattr(store, 'combat_participants'):
-                    for participant in store.combat_participants:
-                        if hasattr(participant, 'name'):
-                            if participant.name == attacker_name:
-                                attacker = participant
-                            elif participant.name == target_name:
-                                target = participant
-                
-                # If we found both attacker and target, create enhanced entry
-                if attacker and target:
-                    # Estimate attack roll (AC + random factor)
-                    import random
-                    target_ac = getattr(target, 'ac', 10)
-                    attack_roll = target_ac + random.randint(1, 8)  # Hit by 1-8
-                    
-                    # Create enhanced entry
-                    create_opponent_attack_entry(
-                        attacker=attacker,
-                        target=target,
-                        attack_roll=attack_roll,
-                        damage_roll=damage,
-                        hit=True,
-                        weapon=getattr(attacker, 'weapon', None)
-                    )
-                
-                # Mark as parsed
-                store.parsed_combat_entries.add(entry_id)
-                continue
-            
-            # Pattern: "[NPC Name] misses [Target]!"
-            miss_pattern = r"^(.+?)\s+misses\s+(.+?)!"
-            miss_match = re.match(miss_pattern, entry)
-            
-            if miss_match:
-                attacker_name = miss_match.group(1).strip()
-                target_name = miss_match.group(2).strip()
-                
-                # Find attacker and target objects
-                attacker = None
-                target = None
-                
-                if hasattr(store, 'combat_participants'):
-                    for participant in store.combat_participants:
-                        if hasattr(participant, 'name'):
-                            if participant.name == attacker_name:
-                                attacker = participant
-                            elif participant.name == target_name:
-                                target = participant
-                
-                if attacker and target:
-                    # Estimate attack roll (below AC)
-                    import random
-                    target_ac = getattr(target, 'ac', 10)
-                    attack_roll = max(1, target_ac - random.randint(1, 5))  # Miss by 1-5
-                    
-                    # Create enhanced entry
-                    create_opponent_attack_entry(
-                        attacker=attacker,
-                        target=target,
-                        attack_roll=attack_roll,
-                        damage_roll=0,
-                        hit=False,
-                        weapon=getattr(attacker, 'weapon', None)
-                    )
-                
-                # Mark as parsed
-                store.parsed_combat_entries.add(entry_id)
+            # --- Vertical control buttons (Unchanged) ---
+            hbox:
+                xpos 7
+                ypos 1600
+                spacing 30
+                textbutton "END TURN" background "#666666" hover_background "#888888" text_color "#FFFFFF" text_hover_color "#FFFF00" text_size 22 xsize 175 ysize 50 action NullAction() sensitive can_act
+                textbutton "FLEE COMBAT" background "#AA0000" hover_background "#CC3333" text_color "#FFFFFF" text_hover_color "#FFFF00" text_size 22 xsize 180 ysize 50 action NullAction() sensitive can_act
+                textbutton "EXIT COMBAT" background "#333333" hover_background "#555555" text_color "#FFFFFF" text_hover_color "#FFFF00" text_size 22 xsize 175 ysize 50 action Return()
 
 # Styles
 style combat_main_frame:
     background "#1a1a1a"
     padding (20, 20)
-
 style combat_stats_frame:
     background "#2a2a2a"
     padding (10, 10)
-
 style combat_actions_frame:
     background "#2a2a2a" 
     padding (10, 10)
-
 style combat_log_frame:
     background "#2a2a2a"
     padding (10, 10)
