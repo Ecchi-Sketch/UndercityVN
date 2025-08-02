@@ -60,7 +60,7 @@ init python:
 
     # --- COMBAT INTEGRATION LOGIC ---
     combat_manager_ref = [None]
-    narrative_gen = NarrativeGenerator()
+    narrative_gen = CombatNarrativeGenerator()
 
     def get_combat_manager():
         return combat_manager_ref[0]
@@ -72,18 +72,42 @@ init python:
         elif event_type == "attack_resolution":
             actor, target = log_entry.get("actor_name", "N/A"), log_entry.get("target_name", "N/A")
             total_roll, target_ac = log_entry.get("total_attack_roll", 0), log_entry.get("target_ac", 0)
+            d20_roll = log_entry.get("d20_roll", 0)
+            
+            # Build bonus breakdown if available
+            bonus_text = ""
+            if "str_mod" in log_entry or "prof_bonus" in log_entry or "atk_bonus" in log_entry:
+                str_mod = log_entry.get("str_mod", 0)
+                prof_bonus = log_entry.get("prof_bonus", 0)
+                atk_bonus = log_entry.get("atk_bonus", 0)
+                bonus_parts = []
+                if str_mod != 0: bonus_parts.append("STR{:+d}".format(str_mod))
+                if prof_bonus != 0: bonus_parts.append("PROF{:+d}".format(prof_bonus))
+                if atk_bonus != 0: bonus_parts.append("ATK{:+d}".format(atk_bonus))
+                if bonus_parts:
+                    bonus_text = " [{}+{}={}]".format(d20_roll, "+".join(bonus_parts), total_roll)
+                else:
+                    bonus_text = " [{}]".format(d20_roll)
+            
             if log_entry.get("is_critical_fumble"): return "CRIT FAIL: {} vs {} (Rolled 1)".format(actor, target)
             if log_entry.get("hit"):
-                if log_entry.get("is_critical_hit"): return "CRIT HIT: {} vs {}! (Roll: {} vs AC {})".format(actor, target, total_roll, target_ac)
-                return "HIT: {} vs {}! (Roll: {} vs AC {})".format(actor, target, total_roll, target_ac)
-            return "MISS: {} vs {} (Roll: {} vs AC {})".format(actor, target, total_roll, target_ac)
+                if log_entry.get("is_critical_hit"): return "CRIT HIT: {} vs {}!{} vs AC {}".format(actor, target, bonus_text, target_ac)
+                return "HIT: {} vs {}!{} vs AC {}".format(actor, target, bonus_text, target_ac)
+            return "MISS: {} vs {}{} vs AC {}".format(actor, target, bonus_text, target_ac)
         elif event_type == "prompt": return log_entry.get("message", "Awaiting player action...")
         elif event_type == "prompt_damage": return "[Player Action Required] {}".format(log_entry.get("message"))
+        elif event_type == "initiative_prompt": return "[INITIATIVE] {}".format(log_entry.get("message", "Roll for initiative!"))
         elif event_type == "damage_resolution": return "DAMAGE: {} deals {} damage to {}. ({} HP left)".format(log_entry.get("actor_name"), log_entry.get("total_damage"), log_entry.get("target_name"), log_entry.get("target_hp_remaining"))
         elif event_type == "prompt_finishing_blow": return "[Player Action Required] {} is defeated. Deliver a finishing blow?".format(log_entry.get("target_name"))
         elif event_type == "finishing_blow_resolution": return "{} performed a {} finishing blow on {}.".format(log_entry.get("actor_name"), log_entry.get("choice"), log_entry.get("target_name"))
         elif event_type == "combat_end": return "[Combat End: {} - {}]".format(log_entry.get("outcome"), log_entry.get("rewards"))
-        else: return str(log_entry)
+        elif event_type == "consumable_debug": return log_entry.get("message", "Debug message")
+        elif event_type == "healing": return log_entry.get("message", "Healing occurred")
+        else: 
+            # For safety, convert dictionaries to a more display-friendly format
+            if isinstance(log_entry, dict):
+                return "Event: " + log_entry.get("event_type", "Unknown") + (" - " + log_entry.get("message", "") if "message" in log_entry else "")
+            return str(log_entry)
 
 label start_combat(opponents):
     python:

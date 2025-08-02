@@ -15,7 +15,17 @@ init python:
         if not combat_manager:
             return [], 0, []
 
-        actor = combat_manager.get_current_combatant()
+        # For initiative rolls, we need to find the player combatant specifically
+        # rather than the current combatant (which might not be set yet)
+        if combat_manager.combat_state == 'awaiting_initiative_roll':
+            for combatant in combat_manager.pending_initiative_rolls:
+                if getattr(combatant.character_data, 'is_player', False):
+                    actor = combatant
+                    break
+        else:
+            # For other rolls, use current combatant
+            actor = combat_manager.get_current_combatant()
+            
         if not actor or not actor.character_data.is_player:
             return [], 0, []
 
@@ -49,8 +59,16 @@ init python:
                     active_effects.append("{}: {}".format(skill.name, ", ".join(effect_strings)))
 
 
+        # Determine bonus for an INITIATIVE roll
+        if combat_manager.combat_state == 'awaiting_initiative_roll':
+            dex_mod = get_ability_modifier(actor.character_data.dexterity)
+            bonus_components.append(("Dexterity Bonus", dex_mod))
+            
+            total_bonus = dex_mod
+            return bonus_components, total_bonus, active_effects
+        
         # Determine bonus for an ATTACK roll
-        if combat_manager.combat_state == 'awaiting_player_roll':
+        elif combat_manager.combat_state == 'awaiting_player_roll':
             ability_mod = get_ability_modifier(actor.character_data.strength)
             bonus_components.append(("Strength Bonus", ability_mod))
 
@@ -120,6 +138,11 @@ init python:
             )
             combat_manager.pending_action = None
 
+    def ui_process_player_initiative_roll(total_initiative_roll):
+        combat_manager = get_combat_manager()
+        if not combat_manager or combat_manager.combat_state != 'awaiting_initiative_roll': return
+        combat_manager.process_player_initiative_roll(total_initiative_roll)
+
     def ui_resolve_finishing_blow(choice):
         combat_manager = get_combat_manager()
         if not combat_manager or combat_manager.combat_state != 'awaiting_finishing_blow': return
@@ -137,6 +160,8 @@ init python:
                 ui_process_player_d20_roll(roll_value, roll_type=roll_type)
             elif combat_manager.combat_state == 'awaiting_damage_roll':
                 ui_process_player_damage_roll(roll_value)
+            elif combat_manager.combat_state == 'awaiting_initiative_roll':
+                ui_process_player_initiative_roll(roll_value)
             
             manual_roll_input = ""
             renpy.restart_interaction()
@@ -202,6 +227,7 @@ screen combat_encounter():
                                     frame:
                                         background "#333333"
                                         padding (10, 10)
+                                        xalign 0.5
                                         xsize 560
                                         vbox:
                                             spacing 8
@@ -244,7 +270,7 @@ screen combat_encounter():
                     xsize 2560
                     frame:
                         style "combat_log_frame"
-                        xsize 2560
+                        xsize 2500
                         ysize 828
                         vbox:
                             spacing 10
@@ -260,12 +286,12 @@ screen combat_encounter():
                                     spacing 10
                                     if combat_manager.narrative_log:
                                         for entry in combat_manager.narrative_log:
-                                            text "[entry]" color "#E0E0E0" size 22
+                                            text "[entry]" style "log_body_text"
                                     else:
                                         text "Narrative descriptions will appear here..." color "#888888" size 20 italic True xalign 0.5
                     frame:
                         style "combat_log_frame"
-                        xsize 2560
+                        xsize 2500
                         ysize 827
                         vbox:
                             spacing 10
@@ -282,7 +308,7 @@ screen combat_encounter():
                                     if combat_manager.mechanical_log:
                                         for log_entry in combat_manager.mechanical_log:
                                             $ formatted_text = format_mechanical_log_entry(log_entry)
-                                            text "[formatted_text]" color "#FFFFFF" size 18
+                                            text "[formatted_text]" style "log_body_text"
                                     else:
                                         text "Mechanical details will appear here..." color "#888888" size 20 italic True xalign 0.5
                 
@@ -291,64 +317,92 @@ screen combat_encounter():
                     style "combat_log_frame"
                     xsize 600
                     ysize 1675
-                    xalign 1.0
+                    xalign 0.0
                     
                     vbox:
                         xalign 0.5
                         yalign 0.5
                         spacing 15
 
-                        if combat_manager.combat_state in ['awaiting_player_roll', 'awaiting_damage_roll']:
+                        if combat_manager.combat_state in ['awaiting_player_roll', 'awaiting_damage_roll', 'awaiting_initiative_roll']:
                             
                             $ bonus_components, total_bonus, active_effects = get_player_bonuses_and_effects()
                             
                             if bonus_components:
-                                text "Your Bonuses:" size 24 color "#FFFFFF" xalign 0.5
+                                text "Your Bonuses:" style "combat_mechanical_text" xalign .5
                                 frame:
                                     background "#1a1a1a"
                                     padding (10, 10)
+                                    xalign 0.5
                                     vbox:
-                                        xsize 400
+                                        xsize 500
                                         spacing 5
+                                        xalign 1.0
                                         for name, value in bonus_components:
                                             hbox:
-                                                text name color "#CCCCCC"
-                                                xfill True
-                                                text "+ [value]" color "#00FF00"
+                                                text name style "combat_bonus_text"
+                                                xfill False
+                                                text "+ [value]" style "combat_bonus_text" xalign 0.5 color "#00FF00"
                                 
                                 text "Total Bonus:" size 24 color "#FFFFFF" xalign 0.5
                                 text "+ [total_bonus]" size 36 color "#00FF00" xalign 0.5 bold True
                             
-                            if active_effects:
-                                text "Active Effects:" size 24 color "#FFFFFF" xalign 0.5
-                                frame:
-                                    background "#1a1a1a"
-                                    padding (10, 10)
-                                    vbox:
-                                        xsize 400
-                                        spacing 5
-                                        for effect_string in active_effects:
-                                            text effect_string color "#aaddff" size 18
-                            
-                            # MODIFIED: Prompt now changes for critical hits.
-                            if combat_manager.combat_state == 'awaiting_damage_roll' and combat_manager.pending_action.get("is_critical", False):
+                            # Show equipped items and their damage dice (only during damage rolls)
+                            if combat_manager.combat_state == 'awaiting_damage_roll':
+                                $ actor = combat_manager.get_current_combatant()
+                                $ equipped_items = [item for item in actor.character_data.equipped_items if hasattr(item, 'effects') and any('damage' in effect for effect in item.effects.keys())] if actor else []
+                                if equipped_items:
+                                    text "Equipped Weapon Damage:" size 24 color "#FFFFFF" xalign 0.5
+                                    frame:
+                                        background "#1a1a1a"
+                                        padding (10, 10)
+                                        xalign 0.5
+                                        vbox:
+                                            xsize 400
+                                            spacing 5
+                                            $ damage_dice = []
+                                            $ dice_counts = {}
+                                            for item in equipped_items:
+                                                for effect, value in item.effects.items():
+                                                    if 'damage' in effect:
+                                                        $ damage_dice.append(value)
+                                                        $ dice_counts[value] = dice_counts.get(value, 0) + 1
+                                                        text "[item.name]: [value]" style "combat_bonus_text" xalign 0.5
+                                            if damage_dice:
+                                                $ combined_dice = []
+                                                for die_type, count in sorted(dice_counts.items()):
+                                                    if count == 1:
+                                                        $ combined_dice.append(die_type)
+                                                    else:
+                                                        # Extract just the die part (e.g., "d4" from "1d4")
+                                                        $ die_part = die_type[1:] if die_type.startswith('1') else die_type
+                                                        $ combined_dice.append(str(count) + die_part)
+                                                text "Total Damage Dice: "  style "combat_bonus_text" xalign 0.5 color "#00FF00"
+                                                text "[' + '.join(combined_dice)]"  style "combat_bonus_text" xalign 0.5 color "#00FF00"
+
+                            # MODIFIED: Prompt now changes based on combat state.
+                            if combat_manager.combat_state == 'awaiting_initiative_roll':
+                                $ final_prompt = "INITIATIVE ROLL: Roll a d20, add your bonus of +{}, and enter the TOTAL.".format(total_bonus)
+                            elif combat_manager.combat_state == 'awaiting_damage_roll' and combat_manager.pending_action.get("is_critical", False):
                                 $ final_prompt = "CRITICAL HIT! Roll DOUBLE damage dice, add your bonus of +{}, and enter the TOTAL.".format(total_bonus)
                             else:
                                 $ final_prompt = "Roll your dice, add your bonus of +{}, and enter the TOTAL.".format(total_bonus)
                             
                             text "[final_prompt]" size 24 color "#FFD700" xalign 0.5
 
-                            input value VariableInputValue("manual_roll_input") length 3 allow "0123456789" style "input" text_align 0.5 size 40
+                            input value VariableInputValue("manual_roll_input") length 3 allow "0123456789" style "input" text_align 0.5 size 40 xalign 0.5
 
                             if combat_manager.combat_state == 'awaiting_player_roll':
-                                hbox:
+                                vbox:
                                     xalign 0.5
                                     spacing 15
-                                    textbutton "Submit Total" action Function(submit_manual_roll)
-                                    textbutton "Nat 20!" action Function(submit_manual_roll, "nat20") background "#FFD700" text_color "#000000"
-                                    textbutton "Nat 1..." action Function(submit_manual_roll, "nat1") background "#AA0000"
+                                    add Solid("#404040", xfill=True, ysize=1)
+                                    textbutton "Submit Total" action Function(submit_manual_roll) text_style "green_to_blue"  xalign 0.5
+                                    text "Submit using buttons below if dice roll was nat 1 or 20" style "inactive_text" xalign 0.5 bold True
+                                    textbutton "Nat 20" action Function(submit_manual_roll, "nat20") text_style "white_to_blue"  xalign 0.5
+                                    textbutton "Nat 1" action Function(submit_manual_roll, "nat1") text_style "white_to_blue"  xalign 0.5
                             else:
-                                textbutton "Submit Total" action Function(submit_manual_roll) xalign 0.5
+                                textbutton "Submit Total" action Function(submit_manual_roll) xalign 0.5  text_style "green_to_blue"
                         
                         else:
                             text "Awaiting combat action..." size 22 color "#888888" xalign 0.5
@@ -382,7 +436,8 @@ screen combat_encounter():
                         spacing 40
                         xalign 0.5
                         yalign 0.5
-                        $ can_act = (combat_manager.get_current_combatant().character_data == player_stats and combat_manager.combat_state == 'active')
+                        $ current_combatant = combat_manager.get_current_combatant()
+                        $ can_act = (current_combatant and current_combatant.character_data == player_stats and combat_manager.combat_state == 'active')
                         textbutton "ATTACK" background "#AA0000" hover_background "#CC3333" text_color "#FFFFFF" text_hover_color "#FFFF00" text_size 24 xsize 200 ysize 60 action Function(ui_select_attack_action) sensitive can_act
                         textbutton "DEFEND" background "#0066AA" hover_background "#3388CC" text_color "#FFFFFF" text_hover_color "#FFFF00" text_size 24 xsize 200 ysize 60 action NullAction() sensitive can_act
                         textbutton "UTILITY" background "#6600AA" hover_background "#8833CC" text_color "#FFFFFF" text_hover_color "#FFFF00" text_size 24 xsize 200 ysize 60 action NullAction() sensitive can_act

@@ -1,8 +1,10 @@
 # == 0. Character Profiles and Attributes =====================================
-# Define default variables for the player's name and background.
+# Define default variables for the player's name, background, and gender.
 # The 'player_stats' object is now defined in NPCRoster.rpy to fix the error.
 default player_name = "Player"
 default player_background = ""
+default selected_gender = "Unspecified"
+default selected_pronouns = {"subject": "they", "object": "them", "possessive": "their"}
 
 # Use an init python block to define the character profiles as classes.
 init python:
@@ -36,11 +38,19 @@ init python:
         )
     }
     
+    # Gender options with corresponding pronouns
+    gender_options = {
+        "Male": {"subject": "he", "object": "him", "possessive": "his"},
+        "Female": {"subject": "she", "object": "her", "possessive": "her"},
+        "Non-binary": {"subject": "they", "object": "them", "possessive": "their"},
+        "Unspecified": {"subject": "they", "object": "them", "possessive": "their"}
+    }
+    
     selected_profile = profiles["Boxer"]
 
     # This function now updates the existing player_stats object instead of creating a new one.
     def finalize_character_creation():
-        global player_stats, player_name, player_background, selected_profile
+        global player_stats, player_name, player_background, selected_profile, selected_gender, selected_pronouns
         
         # Update the stats of the global player_stats object
         player_stats.name = player_name
@@ -55,6 +65,10 @@ init python:
         
         # Set the background
         player_background = selected_profile.name
+        
+        # Set gender and pronouns
+        player_stats.gender = selected_gender
+        player_stats.pronouns = selected_pronouns
         
         # Recalculate stats to apply any initial bonuses and set current HP
         player_stats.recalculate_stats()
@@ -81,6 +95,14 @@ screen character_creation():
                 spacing 20
                 label "Name:"
                 input id "player_name" default player_name value VariableInputValue("player_name")
+
+            hbox:
+                spacing 20
+                label "Gender:"
+                textbutton "Male" action [SetVariable("selected_gender", "Male"), SetVariable("selected_pronouns", gender_options["Male"])]
+                textbutton "Female" action [SetVariable("selected_gender", "Female"), SetVariable("selected_pronouns", gender_options["Female"])]
+                textbutton "Non-binary" action [SetVariable("selected_gender", "Non-binary"), SetVariable("selected_pronouns", gender_options["Non-binary"])]
+                textbutton "Unspecified" action [SetVariable("selected_gender", "Unspecified"), SetVariable("selected_pronouns", gender_options["Unspecified"])]
 
             hbox:
                 spacing 20

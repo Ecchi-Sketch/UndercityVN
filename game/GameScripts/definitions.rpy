@@ -183,6 +183,68 @@ python early:
                 self.add_item(item_id, 1)
                 self.recalculate_stats()
         
+        def use_consumable(self, item_id):
+            """Use a consumable item and apply its effects"""
+            if item_id in self.inventory and item_id in item_database:
+                item = item_database[item_id]
+                if item.category == "consumable":
+                    # Remove one from inventory
+                    self.inventory[item_id] -= 1
+                    if self.inventory[item_id] == 0:
+                        del self.inventory[item_id]
+                    
+                    # Apply item effects
+                    if item.effects:
+                        for effect, value in item.effects.items():
+                            if effect == "heal" or effect == "heal_amount":
+                                # Heal the character
+                                old_hp = self.hp
+                                
+                                # Log debug information to combat log
+                                combat_manager = get_combat_manager()
+                                if combat_manager:
+                                    combat_manager._log_event({
+                                        "event_type": "consumable_debug",
+                                        "message": "DEBUG: Current HP: {}/{}, Healing Value: {}".format(self.hp, self.max_hp, value)
+                                    })
+                                
+                                self.hp = min(self.max_hp, self.hp + value)
+                                healed = self.hp - old_hp
+                                
+                                # Log healing calculation debug to combat log
+                                if combat_manager:
+                                    combat_manager._log_event({
+                                        "event_type": "consumable_debug",
+                                        "message": "DEBUG: Old HP: {}, New HP: {}, Healed: {}".format(old_hp, self.hp, healed)
+                                    })
+                                
+                                # Log healing result to combat log
+                                if combat_manager:
+                                    if healed > 0:
+                                        combat_manager._log_event({
+                                            "event_type": "healing",
+                                            "message": "Healed {} HP! ({}/{} HP)".format(healed, self.hp, self.max_hp),
+                                            "healed_amount": healed,
+                                            "current_hp": self.hp,
+                                            "max_hp": self.max_hp
+                                        })
+                                    else:
+                                        combat_manager._log_event({
+                                            "event_type": "healing",
+                                            "message": "Already at full health!"
+                                        })
+                                else:
+                                    # Fallback to renpy.notify if not in combat
+                                    if healed > 0:
+                                        renpy.notify("Healed {} HP! ({}/{} HP)".format(healed, self.hp, self.max_hp))
+                                    else:
+                                        renpy.notify("Already at full health!")
+                            # Add other consumable effects here as needed
+                    
+                    # Return nothing to prevent game advancement
+                    return
+            # Return nothing to prevent game advancement
+        
         def get_xp_for_next_level(self):
             return xp_thresholds.get(self.level + 1, 999999)
 
@@ -225,6 +287,16 @@ style subheader_text is default:
 
 style combat_mechanical_text is default:
     size 30
+    color "#FFFFFF"
+    bold True
+
+style log_body_text is default:
+    size 30
+    color "#FFFFFF"
+    bold False
+
+style combat_bonus_text is default:
+    size 28
     color "#FFFFFF"
     bold True
 
@@ -282,6 +354,12 @@ style green_to_blue is default:
     color "#79aa88"
     bold True
     hover_color "#aaddff"
+
+style white_to_blue is default:
+    size 30
+    color "#ffffff"
+    bold True
+    hover_color "#aaddff"    
 
 style inventory_button_text is default:
     size 30

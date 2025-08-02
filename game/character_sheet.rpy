@@ -21,6 +21,41 @@ init python:
             elif effect == "dmg_bonus": formatted = "+{} DMG".format(total_bonus)
             effects.append(formatted)
         return ", ".join(effects)
+    
+    # --- Function to get and format current node ID ---
+    def get_current_node_display():
+        """
+        Gets current location display using centralized locations.rpy system.
+        Returns formatted location string for character sheet display.
+        """
+        try:
+            # Get current location node from centralized system
+            location_node = get_current_location_node()
+            
+            # Return formatted display from the location node
+            return location_node.get_formatted_display()
+            
+        except (AttributeError, NameError):
+            return "Unknown Location"
+    
+    # --- Function to get player gender and pronouns ---
+    def get_player_gender_display():
+        """
+        Gets player gender and pronoun information for character sheet display.
+        Returns formatted string with gender and pronouns.
+        """
+        try:
+            gender = getattr(player_stats, 'gender', 'Unspecified')
+            pronouns = getattr(player_stats, 'pronouns', {'subject': 'they', 'object': 'them', 'possessive': 'their'})
+            
+            # Capitalize gender for display
+            gender_display = gender.capitalize() if gender != 'unspecified' else 'Unspecified'
+            pronoun_display = f"{pronouns['subject']}/{pronouns['object']}/{pronouns['possessive']}"
+            
+            return f"{gender_display} ({pronoun_display})"
+            
+        except (AttributeError, NameError):
+            return "Unspecified (they/them/their)"
 
 # Screen for the button that toggles the character sheet.
 screen player_hud():
@@ -74,6 +109,30 @@ screen player_stats_screen():
                         hbox:
                             text "HP:" xsize 150
                             text "[player_stats.hp] / [player_stats.max_hp]"
+                        
+                        # --- Current Location ---
+                        null height 5
+                        text "Current Location" style "subheader_text" size 24
+                        vbox:
+                            spacing 2
+                            text "[get_current_node_display()]":
+                                style "item_text"
+                                size 20
+                                color "#00CCFF"
+                            text "(Node-based mapping system)":
+                                style "description_text"
+                                size 16
+                                color "#888888"
+                        
+                        # --- Gender ---
+                        null height 5
+                        text "Gender" style "subheader_text" size 24
+                        text "[get_player_gender_display()]":
+                            style "item_text"
+                            size 20
+                            color "#FFB366"  # Orange color for gender display
+                        
+                        null height 10
                         hbox:
                             text "AC:" xsize 150
                             text "[player_stats.ac]"

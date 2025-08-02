@@ -49,18 +49,29 @@ python early:
             self.current_turn_index, self.round_number = 0, 1
             self.combat_state, self.pending_finishing_blow = 'setup', None
             self.pending_action = None
+            self.pending_initiative_rolls = []  # Track who still needs to roll initiative
+            self.player_initiative_rolled = False
 
         def initialize_combat(self, character_objects):
             if not character_objects: return
             self.participants = [Combatant(char) for char in character_objects]
+            
+            # Initialize NPC initiative automatically
             for combatant in self.participants:
-                dex_mod = get_ability_modifier(combatant.character_data.dexterity)
-                combatant.initiative = renpy.random.randint(1, 20) + dex_mod
-            self.turn_order = sorted(self.participants, key=lambda c: c.initiative, reverse=True)
-            self.combat_state = 'active'
-            self._log_event({"event_type": "combat_start", "turn_order": [c.get_name() for c in self.turn_order]})
-            self._log_event({"event_type": "round_start", "round_number": self.round_number})
-            self._process_npc_turn_if_applicable()
+                if not getattr(combatant.character_data, 'is_player', False):
+                    dex_mod = get_ability_modifier(combatant.character_data.dexterity)
+                    combatant.initiative = renpy.random.randint(1, 20) + dex_mod
+                else:
+                    # Player needs to roll initiative manually
+                    combatant.initiative = 0  # Placeholder
+                    self.pending_initiative_rolls.append(combatant)
+            
+            # Check if player needs to roll initiative
+            if self.pending_initiative_rolls:
+                self.combat_state = 'awaiting_initiative_roll'
+                self._log_event({"event_type": "initiative_prompt", "message": "Roll for initiative! (d20 + Dex modifier)"})
+            else:
+                self._finalize_initiative_and_start_combat()
 
         def get_current_combatant(self):
             if not self.turn_order: return None
@@ -97,10 +108,12 @@ python early:
                 renpy.timeout(0.5)
                 self.advance_turn()
 
-        def _log_event(self, event_data):
-            self.mechanical_log.append(event_data)
-            prose = self.narrative_generator.generate_prose(event_data)
-            if prose: self.narrative_log.append(prose)
+        def _log_event(self, event):
+            self.mechanical_log.append(event)
+            if self.narrative_generator and event.get("event_type") not in ["initiative_prompt", "initiative_roll"]:
+                prose = self.narrative_generator.generate_event_prose(event)
+                if prose:
+                    self.narrative_log.append(prose)
             renpy.restart_interaction()
 
         #======================================================================
@@ -134,7 +147,23 @@ python early:
                 is_critical_fumble = False
                 hit = (is_critical_hit or total_attack_roll >= target_ac)
 
-            event = {"event_type": "attack_resolution", "actor_name": actor.get_name(), "target_name": target.get_name(), "weapon_name": weapon.name, "d20_roll": raw_roll_display, "total_attack_roll": total_attack_roll, "target_ac": target_ac, "hit": hit, "is_critical_hit": is_critical_hit, "is_critical_fumble": is_critical_fumble}
+            # FIXED: Added full actor, target, and weapon objects to the event dictionary
+            # This ensures the narrative generator receives the objects it needs, preventing the crash.
+            event = {
+                "event_type": "attack_resolution", 
+                "actor": actor,
+                "target": target,
+                "weapon": weapon,
+                "actor_name": actor.get_name(), 
+                "target_name": target.get_name(), 
+                "weapon_name": weapon.name, 
+                "d20_roll": raw_roll_display, 
+                "total_attack_roll": total_attack_roll, 
+                "target_ac": target_ac, 
+                "hit": hit, 
+                "is_critical_hit": is_critical_hit, 
+                "is_critical_fumble": is_critical_fumble
+            }
             self._log_event(event)
             actor.action_taken = True
             
@@ -150,8 +179,21 @@ python early:
         def resolve_damage(self, actor, target, weapon, total_damage, is_critical):
             final_damage_to_apply = max(1, total_damage)
             target.take_damage(final_damage_to_apply)
-            event = {"event_type": "damage_resolution", "actor_name": actor.get_name(), "target_name": target.get_name(), "total_damage": final_damage_to_apply, "target_hp_remaining": target.current_hp, "target_is_defeated": target.is_defeated()}
+            
+            # FIXED: Added actor and target objects to the damage event so the narrative
+            # generator can describe the wound severity correctly.
+            event = {
+                "event_type": "damage_resolution", 
+                "actor": actor,
+                "target": target,
+                "actor_name": actor.get_name(), 
+                "target_name": target.get_name(), 
+                "total_damage": final_damage_to_apply, 
+                "target_hp_remaining": target.current_hp, 
+                "target_is_defeated": target.is_defeated()
+            }
             self._log_event(event)
+
             if target.is_defeated() and not target.is_finished:
                 self.combat_state = 'awaiting_finishing_blow'
                 self.pending_finishing_blow = {"actor": actor, "target": target}
@@ -169,9 +211,29 @@ python early:
             is_critical_hit = (d20_roll == 20) or (total_attack_roll - target_ac >= 7)
             is_critical_fumble = (d20_roll == 1)
             hit = not is_critical_fumble and (is_critical_hit or total_attack_roll >= target_ac)
-            attack_event = {"event_type": "attack_resolution", "actor_name": actor.get_name(), "target_name": target.get_name(), "weapon_name": weapon.name, "d20_roll": d20_roll, "total_attack_roll": total_attack_roll, "target_ac": target_ac, "hit": hit, "is_critical_hit": is_critical_hit, "is_critical_fumble": is_critical_fumble}
+
+            # FIXED: Added full objects to the event dictionary for NPCs as well.
+            attack_event = {
+                "event_type": "attack_resolution", 
+                "actor": actor,
+                "target": target,
+                "weapon": weapon,
+                "actor_name": actor.get_name(), 
+                "target_name": target.get_name(), 
+                "weapon_name": weapon.name, 
+                "d20_roll": d20_roll, 
+                "total_attack_roll": total_attack_roll, 
+                "target_ac": target_ac, 
+                "hit": hit, 
+                "is_critical_hit": is_critical_hit, 
+                "is_critical_fumble": is_critical_fumble, 
+                "str_mod": str_mod, 
+                "prof_bonus": prof_bonus, 
+                "atk_bonus": atk_bonus
+            }
             self._log_event(attack_event)
             actor.action_taken = True
+
             if hit:
                 damage_dice = weapon.effects.get("damage", "1d4")
                 if is_critical_hit:
@@ -182,19 +244,46 @@ python early:
                 damage_roll = roll_dice(damage_dice)
                 total_damage = max(1, damage_roll + str_mod + actor.character_data.dmg_bonus)
                 target.take_damage(total_damage)
-                damage_event = {"event_type": "damage_resolution", "actor_name": actor.get_name(), "target_name": target.get_name(), "total_damage": total_damage, "target_hp_remaining": target.current_hp, "target_is_defeated": target.is_defeated()}
+
+                # FIXED: Added full objects here too.
+                damage_event = {
+                    "event_type": "damage_resolution", 
+                    "actor": actor,
+                    "target": target,
+                    "actor_name": actor.get_name(), 
+                    "target_name": target.get_name(), 
+                    "total_damage": total_damage, 
+                    "target_hp_remaining": target.current_hp, 
+                    "target_is_defeated": target.is_defeated()
+                }
                 self._log_event(damage_event)
+
                 if target.is_defeated() and not target.is_finished:
                     self.resolve_finishing_blow("nonlethal", npc_actor=actor)
 
         def resolve_finishing_blow(self, choice, npc_actor=None):
-            actor = npc_actor if npc_actor else self.pending_finishing_blow["actor"]
-            target = self.pending_finishing_blow["target"] if not npc_actor else next((p for p in self.participants if p.is_defeated() and not p.is_finished), None)
-            if not actor or not target: return
-            target.is_finished = True
-            prose = self.narrative_generator.generate_finishing_blow_prose(actor.get_name(), target.get_name(), choice)
+            actor_combatant = npc_actor if npc_actor else self.pending_finishing_blow["actor"]
+            target_combatant = self.pending_finishing_blow["target"] if not npc_actor else next((p for p in self.participants if p.is_defeated() and not p.is_finished), None)
+            if not actor_combatant or not target_combatant: return
+            target_combatant.is_finished = True
+            
+            weapon_name = None
+            # Use character_data to access equipped_items
+            if hasattr(actor_combatant.character_data, 'equipped_items') and actor_combatant.character_data.equipped_items:
+                for item in actor_combatant.character_data.equipped_items:
+                    if hasattr(item, 'slot') and item.slot == 'weapon':
+                        weapon_name = item.name
+                        break
+            
+            prose = self.narrative_generator.generate_finishing_blow_prose(
+                actor_combatant.get_name(), 
+                target_combatant.get_name(), 
+                choice, 
+                weapon_name=weapon_name, 
+                location="underground_fight_club"
+            )
             if prose: self.narrative_log.append(prose)
-            self._log_event({"event_type": "finishing_blow_resolution", "actor_name": actor.get_name(), "target_name": target.get_name(), "choice": choice})
+            self._log_event({"event_type": "finishing_blow_resolution", "actor_name": actor_combatant.get_name(), "target_name": target_combatant.get_name(), "choice": choice})
             self.pending_finishing_blow = None
             self.combat_state = 'active'
             if not npc_actor:
@@ -222,4 +311,45 @@ python early:
                 outcome, rewards_summary = "Victory", "Drops: {}xp, {} skill xp, {}cc".format(total_xp, total_skill_xp, total_cc)
             else:
                 outcome, rewards_summary = "Defeat", "You were defeated."
-            self._log_event({"event_type": "combat_end", "outcome": outcome, "rewards": rewards_summary})
+            self._log_event({"event_type": "combat_end", "outcome": outcome, "rewards": rewards_summary, "participants": self.participants})
+
+        def _finalize_initiative_and_start_combat(self):
+            """Finalize initiative order and start combat after all rolls are complete"""
+            self.turn_order = sorted(self.participants, key=lambda c: c.initiative, reverse=True)
+            self.combat_state = 'active'
+            self._log_event({"event_type": "combat_start", "turn_order": [c.get_name() for c in self.turn_order]})
+            self._log_event({"event_type": "round_start", "round_number": self.round_number})
+            self._process_npc_turn_if_applicable()
+
+        def process_player_initiative_roll(self, total_initiative_roll):
+            """Process the player's manual initiative roll"""
+            if self.combat_state != 'awaiting_initiative_roll' or not self.pending_initiative_rolls:
+                return
+            
+            player_combatant = next((c for c in self.pending_initiative_rolls if getattr(c.character_data, 'is_player', False)), None)
+            
+            if player_combatant:
+                player_combatant.initiative = total_initiative_roll
+                self.pending_initiative_rolls.remove(player_combatant)
+                self.player_initiative_rolled = True
+                
+                dex_mod = get_ability_modifier(player_combatant.character_data.dexterity)
+                d20_roll = total_initiative_roll - dex_mod
+                self._log_event({
+                    "event_type": "initiative_roll", 
+                    "actor_name": player_combatant.get_name(),
+                    "d20_roll": d20_roll,
+                    "dex_modifier": dex_mod,
+                    "total_initiative": total_initiative_roll
+                })
+                
+                if not self.pending_initiative_rolls:
+                    self._finalize_initiative_and_start_combat()
+
+        def _log_event(self, event):
+            self.mechanical_log.append(event)
+            if self.narrative_generator and event.get("event_type") not in ["initiative_prompt", "initiative_roll", "prompt_damage"]:
+                prose = self.narrative_generator.generate_event_prose(event)
+                if prose:
+                    self.narrative_log.append(prose)
+            renpy.restart_interaction()

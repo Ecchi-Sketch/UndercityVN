@@ -2,6 +2,7 @@
 default npc_roster = {}
 
 # Default base stats for NPCs - these are the baseline stats without equipment or skills
+# Now includes description and backstory for LLM-enhanced combat narratives
 default default_npc_stats = {
     "zev": {
         "name": "Zev", 
@@ -12,7 +13,12 @@ default default_npc_stats = {
         "con": 10, 
         "intl": 12, 
         "wis": 14, 
-        "cha": 10
+        "cha": 10,
+        "gender": "male",
+        "pronouns": {"subject": "he", "object": "him", "possessive": "his"},
+        "description": "A small, wiry scavenger with quick eyes and nimble fingers. Zev moves with the fluid grace of someone who's spent years dodging danger in Zaun's cramped alleys. His clothes are patched and practical, with hidden pockets for tools and found treasures.",
+        "backstory": "Zev grew up in the Gray, learning to survive by salvaging useful materials from Zaun's industrial waste. He's developed an uncanny ability to spot valuable scrap and avoid the worst dangers of the undercity. Despite his rough upbringing, Zev maintains an optimistic outlook and genuine curiosity about the world.",
+        "fighting_style": "Evasive Scavenger - relies on speed, dirty tricks, and improvised weapons"
     },
     "sevika": {
         "name": "Sevika", 
@@ -23,7 +29,12 @@ default default_npc_stats = {
         "con": 16, 
         "intl": 12, 
         "wis": 12, 
-        "cha": 14
+        "cha": 14,
+        "gender": "female",
+        "pronouns": {"subject": "she", "object": "her", "possessive": "her"},
+        "description": "A towering, intimidating figure with a cybernetic left arm that gleams with deadly purpose. Sevika's muscular frame is covered in scars from countless battles, and her cold eyes show no mercy. Her mechanical arm whirs softly with each movement, a constant reminder of her enhanced lethality.",
+        "backstory": "Sevika lost her left arm defending Zaun from Piltovan enforcers, but gained something far more dangerous in return. Now serving as Silco's right hand, she enforces order in the undercity through brutal efficiency. Her loyalty to Zaun runs deeper than blood, and she'll crush anyone who threatens her home.",
+        "fighting_style": "Cybernetic Brawler - overwhelming strength combined with mechanical precision"
     },
     "zaunite_thug_template": {
         "name": "Zaunite Thug", 
@@ -34,7 +45,12 @@ default default_npc_stats = {
         "con": 12, 
         "intl": 8, 
         "wis": 8, 
-        "cha": 8
+        "cha": 8,
+        "gender": "male",
+        "pronouns": {"subject": "he", "object": "him", "possessive": "his"},
+        "description": "A rough-looking street fighter with multiple scars and gang tattoos. His clothes are torn and stained with the grime of Zaun's streets. Cold, desperate eyes hint at a life of violence and survival at any cost.",
+        "backstory": "Another casualty of Zaun's harsh reality, forced into violence by poverty and desperation. He's learned that in the undercity, you either fight or become prey. His loyalty can be bought, but his desperation makes him dangerous and unpredictable.",
+        "fighting_style": "Street Brawler - dirty fighting with improvised weapons and no honor"
     }
 }
 
@@ -64,9 +80,9 @@ default npc_loadouts = {
             "inventory": ["healing_draught", "old_sewer_key"]
         },
         "skills": {
-            "tough_as_nails": 3,
-            "street_fighter": 2,
-            "intimidation": 2
+            "tough_as_nails": 1,
+            "street_fighter": 1,
+            "intimidation": 1
         },
         "active_skills": ["tough_as_nails", "street_fighter"]
     },
@@ -175,20 +191,21 @@ label initialize_npcs:
     # ----- EXAMPLE 1: Simple usage with default stats -----
     # Create NPCs using their default stats and loadouts
     $ npc_roster["zev"] = create_npc_with_loadout("zev")
-    
+    $ npc_roster["sevika"] = create_npc_with_loadout("sevika")
+
     # ----- EXAMPLE 2: Overriding default stats -----
     # Create an NPC with custom stats but standard loadout
-    $ npc_roster["sevika"] = create_npc_with_loadout("sevika", {
-        "name": "Sevika (Elite)", 
-        "hp": 55,  # Higher HP than default
-        "ac": 18,  # Higher AC than default
-        "str": 20, # Higher strength than default
-        "dex": 14, 
-        "con": 16, 
-        "intl": 12, 
-        "wis": 12, 
-        "cha": 16  # Higher charisma than default
-    })
+    #$ npc_roster["sevika"] = create_npc_with_loadout("sevika", {
+    #    "name": "Sevika (Elite)", 
+    #    "hp": 55,  # Higher HP than default
+    #    "ac": 18,  # Higher AC than default
+    #    "str": 20, # Higher strength than default
+    #    "dex": 14, 
+    #    "con": 16, 
+    #    "intl": 12, 
+    #    "wis": 12, 
+    #    "cha": 16  # Higher charisma than default
+    #})
     
     # ----- EXAMPLE 3: Creating variants from templates -----
     # Create a custom NPC based on the thug template

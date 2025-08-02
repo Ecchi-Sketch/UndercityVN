@@ -6,6 +6,7 @@ label test_combat:
     # Initialize the player character's stats and loadout.
     # This label is now in NPCRoster.rpy, ensuring correct load order.
     call initialize_player_character
+    $ store.current_node_id = "ZAUN-INDUSTRIALZONE-CHEMTECH_FOUNDRY-MIXING_CHAMBER"
 
     # Initialize the NPC roster.
     if not npc_roster:
