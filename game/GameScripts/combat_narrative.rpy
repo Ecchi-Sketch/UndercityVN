@@ -286,6 +286,115 @@ python early:
                 'pronouns': {'subject': 'they', 'object': 'them', 'possessive': 'their'}
             }
 
+        def generate_attack_announcement_narrative(self, attacker, target, weapon_name=None, environment="default", node_id=None):
+            """Generates narrative for opponent's attack announcement only (no resolution)."""
+            attacker_name = attacker.get_name() if hasattr(attacker, 'get_name') else str(attacker)
+            target_name = target.get_name() if hasattr(target, 'get_name') else str(target)
+            
+            # Get character context for both combatants
+            attacker_context = self.get_character_context(attacker)
+            target_context = self.get_character_context(target)
+            
+            # Get comprehensive location context from centralized location system
+            location_data = self.get_location_context(node_id, environment)
+            location_node = get_current_location_node() if not node_id else get_location_by_node_id(node_id)
+            natural_subnode = location_node.get_natural_language_subnode() if location_node else "the area"
+            
+            # Build enhanced LLM prompt for attack announcement only
+            attacker_pronouns = attacker_context['pronouns']
+            target_pronouns = target_context['pronouns']
+            
+            prompt = f"""Generate a combat narrative describing ONLY the preparation, stance, and intent of {attacker_name} as they prepare to attack {target_name}.
+            
+            IMPORTANT: DO NOT describe the outcome, impact, or {target_name}'s reaction. End the description at the moment just before the attack connects or misses, leaving the outcome completely unknown.
+            
+            Attacker: {attacker_name}
+            Target: {target_name}
+            Weapon: {weapon_name or 'unarmed strike'}
+            
+            Focus on: attack preparation, stance, weapon positioning, intent, anticipation.
+            Avoid: hit/miss results, damage, target reactions, defensive responses.
+            
+            Keep it concise (2-3 sentences) and atmospheric."""
+            
+            # Try LLM narration first
+            llm_narrative = get_llm_narration(prompt)
+            if llm_narrative and llm_narrative.strip():
+                return llm_narrative.strip()
+            
+            # Fallback to template system - attack initiation only
+            weapon_desc = weapon_name.lower() if weapon_name else "fist"
+            
+            initiation_templates = [
+                f"{attacker_name} raises their {weapon_desc}, eyes locked on {target_name}.",
+                f"{attacker_name} shifts into an aggressive stance, {weapon_desc} at the ready.",
+                f"With focused intent, {attacker_name} prepares to strike {target_name} with their {weapon_desc}.",
+                f"{attacker_name} draws back their {weapon_desc}, targeting {target_name}.",
+                f"Tension fills the air as {attacker_name} readies their {weapon_desc} against {target_name}."
+            ]
+            
+            return renpy.random.choice(initiation_templates)
+
+        def generate_attack_resolution_narrative(self, attacker, target, hit_result, weapon_name=None, environment="default", node_id=None):
+            """Generate narrative for attack resolution only (outcome and reactions, no initiation)"""
+            attacker_name = attacker.get_name()
+            target_name = target.get_name()
+            
+            # Build LLM prompt for attack resolution only
+            prompt = f"""Generate a combat narrative describing ONLY the outcome and immediate reactions of an attack that has already been initiated.
+            
+            The attack by {attacker_name} against {target_name} resulted in: {hit_result}
+            
+            IMPORTANT: DO NOT describe the attack preparation or initiation - that has already happened. Focus ONLY on:
+            - The moment of impact (or miss)
+            - {target_name}'s immediate reaction
+            - The immediate aftermath
+            
+            Attacker: {attacker_name}
+            Target: {target_name}
+            Weapon: {weapon_name or 'unarmed strike'}
+            Result: {hit_result}
+            
+            Focus on: impact/miss moment, target's reaction, immediate consequences.
+            Avoid: attack preparation, stance descriptions, weapon readying.
+            
+            Keep it concise (2-3 sentences) and dramatic."""
+            
+            # Try LLM narration first
+            llm_narrative = get_llm_narration(prompt)
+            if llm_narrative and llm_narrative.strip():
+                return llm_narrative.strip()
+            
+            # Fallback to template system - resolution only
+            weapon_desc = weapon_name.lower() if weapon_name else "strike"
+            
+            if hit_result == "critical":
+                resolution_templates = [
+                    f"The {weapon_desc} finds its mark with devastating precision! {target_name} staggers from the critical blow.",
+                    f"A perfect strike! {target_name} reels as the {weapon_desc} connects with brutal effectiveness.",
+                    f"The attack lands with exceptional force, {target_name} crying out as the {weapon_desc} strikes true."
+                ]
+            elif hit_result == "hit":
+                resolution_templates = [
+                    f"The {weapon_desc} connects solidly. {target_name} grimaces from the impact.",
+                    f"A solid hit! {target_name} absorbs the blow but remains standing.",
+                    f"The attack finds its target, {target_name} wincing as the {weapon_desc} strikes home."
+                ]
+            elif hit_result == "fumble":
+                resolution_templates = [
+                    f"The attack goes wildly astray! {attacker_name} stumbles, completely missing {target_name}.",
+                    f"A terrible miscalculation! {attacker_name}'s {weapon_desc} swings wide, leaving them off-balance.",
+                    f"The strike fails catastrophically, {attacker_name} nearly losing their footing as they miss entirely."
+                ]
+            else:  # miss
+                resolution_templates = [
+                    f"The {weapon_desc} whistles past {target_name}, who deftly avoids the attack.",
+                    f"{target_name} sidesteps the incoming {weapon_desc}, the attack missing cleanly.",
+                    f"The strike fails to connect as {target_name} evades at the last moment."
+                ]
+            
+            return renpy.random.choice(resolution_templates)
+
         def generate_attack_narrative(self, attacker, target, hit_result, weapon_name=None, environment="default", node_id=None):
             """Generates a combat action description using LLM with character and location awareness."""
             attacker_name = attacker.get_name() if hasattr(attacker, 'get_name') else str(attacker)
@@ -437,7 +546,32 @@ python early:
             """Map events to appropriate narrative method."""
             event_type = event.get("event_type")
             
-            if event_type == "attack_resolution":
+            if event_type == "attack_announcement":
+                # Generate narrative for opponent's attack intent only (no resolution)
+                attacker = event.get("actor")
+                target = event.get("target")
+                weapon = event.get("weapon")
+                if not attacker or not target: return None
+                
+                # Generate only the attack initiation narrative, not the resolution
+                return self.generate_attack_announcement_narrative(attacker, target, weapon.name if weapon else None)
+            
+            elif event_type == "attack_resolution_outcome":
+                # Generate narrative for attack resolution only (no initiation, just results)
+                attacker = event.get("actor")
+                target = event.get("target")
+                if not attacker or not target: return None
+
+                if event.get("is_critical_fumble"): hit_result = "fumble"
+                elif event.get("is_critical_hit"): hit_result = "critical"
+                elif event.get("hit"): hit_result = "hit"
+                else: hit_result = "miss"
+
+                weapon = event.get("weapon")
+                weapon_name = weapon.name if weapon else None
+                return self.generate_attack_resolution_narrative(attacker, target, hit_result, weapon_name)
+            
+            elif event_type == "attack_resolution":
                 attacker = event.get("actor")
                 target = event.get("target")
                 if not attacker or not target: return None

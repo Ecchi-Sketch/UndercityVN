@@ -41,6 +41,33 @@ python early:
         def get_ac(self): return self.character_data.ac
         def get_name(self): return self.character_data.name
         def reset_turn_actions(self): self.action_taken, self.bonus_action_taken, self.reaction_taken = False, False, False
+        
+        def add_status_effect(self, effect_name, duration=1):
+            """Add a status effect with duration (turns remaining)"""
+            self.status_effects.append({"name": effect_name, "duration": duration})
+        
+        def remove_status_effect(self, effect_name):
+            """Remove a specific status effect"""
+            self.status_effects = [effect for effect in self.status_effects if effect["name"] != effect_name]
+        
+        def has_status_effect(self, effect_name):
+            """Check if combatant has a specific status effect"""
+            return any(effect["name"] == effect_name for effect in self.status_effects)
+        
+        def update_status_effects(self):
+            """Reduce duration of all status effects and remove expired ones"""
+            for effect in self.status_effects[:]:
+                effect["duration"] -= 1
+                if effect["duration"] <= 0:
+                    self.status_effects.remove(effect)
+        
+        def get_attack_roll_type(self):
+            """Determine if this combatant has advantage, disadvantage, or normal roll"""
+            if self.has_status_effect("disadvantage_next_attack"):
+                return "disadvantage"
+            elif self.has_status_effect("advantage_next_attack"):
+                return "advantage"
+            return "normal"
 
     class CombatController:
         def __init__(self, narrative_generator):
@@ -78,7 +105,8 @@ python early:
             return self.turn_order[self.current_turn_index]
 
         def advance_turn(self):
-            if self.combat_state != 'active': return
+            # Allow turn advancement from defend menu states
+            if self.combat_state not in ['active', 'awaiting_defend_choice']: return
             if self._check_combat_end(): return
             self.current_turn_index = (self.current_turn_index + 1) % len(self.turn_order)
             if self.current_turn_index == 0:
@@ -87,12 +115,28 @@ python early:
             if self.turn_order:
                 current_combatant = self.get_current_combatant()
                 current_combatant.reset_turn_actions()
+                # Update status effects at the start of each turn
+                current_combatant.update_status_effects()
+                # Remove single-use status effects after they're consumed
+                if current_combatant.has_status_effect("disadvantage_next_attack") or current_combatant.has_status_effect("advantage_next_attack"):
+                    current_combatant.remove_status_effect("disadvantage_next_attack")
+                    current_combatant.remove_status_effect("advantage_next_attack")
                 if current_combatant.is_defeated():
                     self.advance_turn()
                 else:
                     self._process_npc_turn_if_applicable()
 
         def _process_npc_turn_if_applicable(self):
+            # DISABLED: Automatic opponent actions now controlled by proceed button
+            # This method is now only called for non-combat scenarios
+            current_combatant = self.get_current_combatant()
+            if not current_combatant or getattr(current_combatant.character_data, 'is_player', False):
+                return
+            # No automatic processing - wait for manual proceed button
+            return
+
+        def _process_npc_turn_manual(self):
+            """Manually process NPC turn when proceed button is pressed"""
             current_combatant = self.get_current_combatant()
             if not current_combatant or getattr(current_combatant.character_data, 'is_player', False):
                 return
@@ -101,10 +145,175 @@ python early:
             if player_target:
                 npc_weapon = next((item for item in current_combatant.character_data.equipped_items if item.slot == 'weapon'), None)
                 if npc_weapon:
-                    d20_roll = renpy.random.randint(1, 20)
-                    self.resolve_npc_attack(current_combatant, player_target, npc_weapon, d20_roll)
+                    # Handle advantage/disadvantage for NPC attacks
+                    roll_type = current_combatant.get_attack_roll_type()
+                    if roll_type == "advantage":
+                        roll1 = renpy.random.randint(1, 20)
+                        roll2 = renpy.random.randint(1, 20)
+                        d20_roll = max(roll1, roll2)
+                        roll_display = "Advantage: {} and {} (using {})".format(roll1, roll2, d20_roll)
+                    elif roll_type == "disadvantage":
+                        roll1 = renpy.random.randint(1, 20)
+                        roll2 = renpy.random.randint(1, 20)
+                        d20_roll = min(roll1, roll2)
+                        roll_display = "Disadvantage: {} and {} (using {})".format(roll1, roll2, d20_roll)
+                    else:
+                        d20_roll = renpy.random.randint(1, 20)
+                        roll_display = str(d20_roll)
+                    
+                    # Store attack data for later resolution
+                    self.pending_attack = {
+                        "actor": current_combatant,
+                        "target": player_target,
+                        "weapon": npc_weapon,
+                        "d20_roll": d20_roll,
+                        "roll_type": roll_type,
+                        "roll_display": roll_display
+                    }
+                    # Announce the attack but don't resolve it yet
+                    self._announce_npc_attack(current_combatant, player_target, npc_weapon, d20_roll, roll_display)
             
             if self.combat_state == 'active':
+                self.combat_state = 'awaiting_attack_resolution'
+                self._log_event({
+                    "event_type": "attack_announced_pause",
+                    "message": "Attack announced. Click PROCEED to see the results."
+                })
+
+        def _announce_npc_attack(self, actor, target, weapon, d20_roll, roll_display=None):
+            """Announce the opponent's attack without resolving it yet"""
+            str_mod = get_ability_modifier(actor.character_data.strength)
+            atk_bonus = actor.character_data.atk_bonus
+            prof_bonus = actor.character_data.proficiency_bonus
+            total_attack_roll = d20_roll + str_mod + prof_bonus + atk_bonus
+            target_ac = target.get_ac()
+            
+            # Log the attack announcement (what they're attempting)
+            attack_announcement = {
+                "event_type": "attack_announcement",
+                "actor": actor,
+                "target": target,
+                "weapon": weapon,
+                "actor_name": actor.get_name(),
+                "target_name": target.get_name(),
+                "weapon_name": weapon.name,
+                "d20_roll": d20_roll,
+                "total_attack_roll": total_attack_roll,
+                "target_ac": target_ac
+            }
+            self._log_event(attack_announcement)
+            actor.action_taken = True
+
+        def _resolve_pending_attack(self):
+            """Resolve the pending attack that was announced"""
+            if not hasattr(self, 'pending_attack') or not self.pending_attack:
+                return
+                
+            attack_data = self.pending_attack
+            actor = attack_data["actor"]
+            target = attack_data["target"]
+            weapon = attack_data["weapon"]
+            d20_roll = attack_data["d20_roll"]
+            
+            # Resolve only the outcome part (no duplicate attack initiation)
+            self._resolve_npc_attack_outcome(actor, target, weapon, d20_roll)
+            
+            # Clear the pending attack
+            self.pending_attack = None
+            
+            # Set state to await final proceed
+            if self.combat_state == 'awaiting_attack_resolution':
+                self.combat_state = 'awaiting_post_action_proceed'
+                self._log_event({
+                    "event_type": "post_action_pause",
+                    "message": "Opponent action complete. Click PROCEED to continue."
+                })
+
+        def _resolve_npc_attack_outcome(self, actor, target, weapon, d20_roll):
+            """Resolve only the outcome of an already-announced NPC attack (no duplicate initiation narrative)"""
+            str_mod = get_ability_modifier(actor.character_data.strength)
+            atk_bonus = actor.character_data.atk_bonus
+            prof_bonus = actor.character_data.proficiency_bonus
+            total_attack_roll = d20_roll + str_mod + prof_bonus + atk_bonus
+            target_ac = target.get_ac()
+            is_critical_hit = (d20_roll == 20) or (total_attack_roll - target_ac >= 7)
+            is_critical_fumble = (d20_roll == 1)
+            hit = not is_critical_fumble and (is_critical_hit or total_attack_roll >= target_ac)
+
+            # Log attack resolution event (outcome only, no initiation narrative)
+            attack_resolution_event = {
+                "event_type": "attack_resolution_outcome", 
+                "actor": actor,
+                "target": target,
+                "weapon": weapon,
+                "actor_name": actor.get_name(), 
+                "target_name": target.get_name(), 
+                "weapon_name": weapon.name, 
+                "d20_roll": d20_roll, 
+                "total_attack_roll": total_attack_roll, 
+                "target_ac": target_ac, 
+                "hit": hit, 
+                "is_critical_hit": is_critical_hit, 
+                "is_critical_fumble": is_critical_fumble, 
+                "str_mod": str_mod, 
+                "prof_bonus": prof_bonus, 
+                "atk_bonus": atk_bonus
+            }
+            self._log_event(attack_resolution_event)
+
+            if hit:
+                damage_dice = weapon.effects.get("damage", "1d4")
+                if is_critical_hit:
+                    try:
+                        num_dice = int(damage_dice.split('d')[0]) * 2
+                        damage_dice = "{}d{}".format(num_dice, damage_dice.split('d')[1])
+                    except: pass
+                damage_roll = roll_dice(damage_dice)
+                total_damage = max(1, damage_roll + str_mod + actor.character_data.dmg_bonus)
+                
+                # Apply block damage reduction if target has block status effect
+                final_damage = total_damage
+                if target.has_status_effect("block_next_attack"):
+                    block_percentage = getattr(target, 'block_percentage', 0)
+                    damage_reduction = int(total_damage * block_percentage / 100)
+                    final_damage = max(1, total_damage - damage_reduction)  # Minimum 1 damage
+                    
+                    # Log the block effect with clear before/after damage
+                    self._log_event({
+                        "event_type": "block_effect",
+                        "target_name": target.get_name(),
+                        "original_damage": total_damage,
+                        "final_damage": final_damage,
+                        "block_percentage": block_percentage,
+                        "message": "{} damage reduced to {} damage by block ({}% reduction)".format(total_damage, final_damage, block_percentage)
+                    })
+                    
+                    # Remove the block status effect after use
+                    target.remove_status_effect("block_next_attack")
+                    if hasattr(target, 'block_percentage'):
+                        delattr(target, 'block_percentage')
+                
+                target.take_damage(final_damage)
+
+                damage_event = {
+                    "event_type": "damage_resolution", 
+                    "actor": actor,
+                    "target": target,
+                    "actor_name": actor.get_name(), 
+                    "target_name": target.get_name(), 
+                    "total_damage": final_damage, 
+                    "target_hp_remaining": target.current_hp, 
+                    "target_is_defeated": target.is_defeated()
+                }
+                self._log_event(damage_event)
+
+                if target.is_defeated() and not target.is_finished:
+                    self.resolve_finishing_blow("nonlethal", npc_actor=actor)
+
+        def _proceed_after_opponent_action(self):
+            """Continue combat flow after opponent action pause"""
+            if self.combat_state == 'awaiting_post_action_proceed':
+                self.combat_state = 'active'
                 renpy.timeout(0.5)
                 self.advance_turn()
 
@@ -178,6 +387,29 @@ python early:
 
         def resolve_damage(self, actor, target, weapon, total_damage, is_critical):
             final_damage_to_apply = max(1, total_damage)
+            
+            # Apply block damage reduction if target has block status effect
+            if target.has_status_effect("block_next_attack"):
+                block_percentage = getattr(target, 'block_percentage', 0)
+                damage_reduction = int(final_damage_to_apply * block_percentage / 100)
+                final_damage_to_apply = max(1, final_damage_to_apply - damage_reduction)  # Minimum 1 damage
+                
+                # Log the block effect with clear before/after damage
+                self._log_event({
+                    "event_type": "block_effect",
+                    "target_name": target.get_name(),
+                    "original_damage": max(1, total_damage),
+                    "damage_reduction": damage_reduction,
+                    "final_damage": final_damage_to_apply,
+                    "block_percentage": block_percentage,
+                    "message": "{} damage reduced to {} damage by block ({}% reduction)".format(max(1, total_damage), final_damage_to_apply, block_percentage)
+                })
+                
+                # Remove the block status effect after use
+                target.remove_status_effect("block_next_attack")
+                if hasattr(target, 'block_percentage'):
+                    delattr(target, 'block_percentage')
+            
             target.take_damage(final_damage_to_apply)
             
             # FIXED: Added actor and target objects to the damage event so the narrative
@@ -243,7 +475,31 @@ python early:
                     except: pass
                 damage_roll = roll_dice(damage_dice)
                 total_damage = max(1, damage_roll + str_mod + actor.character_data.dmg_bonus)
-                target.take_damage(total_damage)
+                
+                # Apply block damage reduction if target has block status effect
+                final_damage = total_damage
+                if target.has_status_effect("block_next_attack"):
+                    block_percentage = getattr(target, 'block_percentage', 0)
+                    damage_reduction = int(total_damage * block_percentage / 100)
+                    final_damage = max(1, total_damage - damage_reduction)  # Minimum 1 damage
+                    
+                    # Log the block effect with clear before/after damage
+                    self._log_event({
+                        "event_type": "block_effect",
+                        "target_name": target.get_name(),
+                        "original_damage": total_damage,
+                        "damage_reduction": damage_reduction,
+                        "final_damage": final_damage,
+                        "block_percentage": block_percentage,
+                        "message": "{} damage reduced to {} damage by block ({}% reduction)".format(total_damage, final_damage, block_percentage)
+                    })
+                    
+                    # Remove the block status effect after use
+                    target.remove_status_effect("block_next_attack")
+                    if hasattr(target, 'block_percentage'):
+                        delattr(target, 'block_percentage')
+                
+                target.take_damage(final_damage)
 
                 # FIXED: Added full objects here too.
                 damage_event = {

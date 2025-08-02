@@ -69,7 +69,7 @@ init python:
         event_type = log_entry.get("event_type")
         if event_type == "combat_start": return "Combat has begun! Initiative order: {}".format(", ".join(log_entry.get("turn_order", [])))
         elif event_type == "round_start": return "=== Round {} ===".format(log_entry.get("round_number", 0))
-        elif event_type == "attack_resolution":
+        elif event_type == "attack_resolution" or event_type == "attack_resolution_outcome":
             actor, target = log_entry.get("actor_name", "N/A"), log_entry.get("target_name", "N/A")
             total_roll, target_ac = log_entry.get("total_attack_roll", 0), log_entry.get("target_ac", 0)
             d20_roll = log_entry.get("d20_roll", 0)
@@ -98,6 +98,11 @@ init python:
         elif event_type == "prompt_damage": return "[Player Action Required] {}".format(log_entry.get("message"))
         elif event_type == "initiative_prompt": return "[INITIATIVE] {}".format(log_entry.get("message", "Roll for initiative!"))
         elif event_type == "damage_resolution": return "DAMAGE: {} deals {} damage to {}. ({} HP left)".format(log_entry.get("actor_name"), log_entry.get("total_damage"), log_entry.get("target_name"), log_entry.get("target_hp_remaining"))
+        elif event_type == "block_effect": return "BLOCK: {} damage reduced to {} damage by {}% block reduction".format(log_entry.get("original_damage"), log_entry.get("final_damage"), log_entry.get("block_percentage"))
+        elif event_type == "dodge_action": return "DODGE: {} - All opponents have disadvantage on their next attack".format(log_entry.get("message", "Dodge action taken"))
+        elif event_type == "block_action": return "BLOCK: {}".format(log_entry.get("message", "Block action taken"))
+        elif event_type == "defend_action": return "DEFEND: {}".format(log_entry.get("message", "Player takes a defensive stance"))
+        elif event_type == "status_effect_applied": return "STATUS: {}".format(log_entry.get("message", "Status effect applied"))
         elif event_type == "prompt_finishing_blow": return "[Player Action Required] {} is defeated. Deliver a finishing blow?".format(log_entry.get("target_name"))
         elif event_type == "finishing_blow_resolution": return "{} performed a {} finishing blow on {}.".format(log_entry.get("actor_name"), log_entry.get("choice"), log_entry.get("target_name"))
         elif event_type == "combat_end": return "[Combat End: {} - {}]".format(log_entry.get("outcome"), log_entry.get("rewards"))

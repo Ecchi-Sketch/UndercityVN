@@ -27,6 +27,10 @@ label Act1_Scene1_intro:
     "You acquired the skill: New Kid in Town!"
     $ player_stats.learn_skill("test_skill")
     "You acquired the skill: Test Skill!"
+    $ player_stats.learn_skill("dodge")
+    "You acquired the skill: Dodge!"
+    $ player_stats.learn_skill("block")
+    "You acquired the skill: Block!"
     $ player_stats.gain_xp(base_amount=0, skill_amount=20000)
     "You've been granted an addtional 20000 skill XP!"
 

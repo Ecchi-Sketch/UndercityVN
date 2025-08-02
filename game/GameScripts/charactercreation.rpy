@@ -22,7 +22,7 @@ init python:
 
     profiles = {
         "Boxer": Profile(
-            "The Boxer", hp=20, ac=14, str=16, dex=12, con=14, intl=8, wis=10, cha=10,
+            "The Boxer", hp=200, ac=1, str=16, dex=12, con=140, intl=8, wis=10, cha=10,
             summary="A straightforward brawler. You solve problems with your fists and intimidate those who stand in your way. You're tough, direct, and your powerful punches are your most valuable asset.",
             backstory="You made a name for yourself in the fighting pits of a lesser city. Seeking bigger prizes and tougher competition, you came to the City of Progress, but your reputation for violence preceded you, leading to a hasty stowaway journey to escape the law."
         ),

@@ -97,6 +97,28 @@ label initialize_skills:
             base_effects={"ac_bonus": 1},  # Enemies hesitate to attack
             per_level_effects={"ac_bonus": 1},
             manifestation_name="Terrifying Presence",
-            manifestation_desc="Weaker enemies may flee rather than fight you."
+            manifestation_desc="Enemies must make a morale check or flee when they see you."
+        )
+        
+        skill_database["dodge"] = LearnedSkill(
+            id="dodge",
+            name="Dodge",
+            description="You've mastered the art of evasion, making your opponents struggle to land clean hits.",
+            max_level=3,
+            base_effects={},  # No passive effects - this is an active skill
+            per_level_effects={},
+            manifestation_name="Untouchable",
+            manifestation_desc="When you dodge, you can immediately counterattack with advantage."
+        )
+        
+        skill_database["block"] = LearnedSkill(
+            id="block",
+            name="Block",
+            description="You can raise your guard to reduce incoming damage through defensive positioning.",
+            max_level=5,
+            base_effects={},  # No passive effects - this is an active skill
+            per_level_effects={},
+            manifestation_name="Immovable Defense",
+            manifestation_desc="Your blocks can completely negate attacks and reflect damage back to attackers."
         )
     return

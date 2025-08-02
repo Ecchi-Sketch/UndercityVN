@@ -79,6 +79,13 @@ init python:
             if other_bonuses != 0:
                 bonus_components.append(("Other Bonuses (Skills/Items)", other_bonuses))
 
+            # Check for advantage/disadvantage
+            roll_type = actor.get_attack_roll_type()
+            if roll_type == "advantage":
+                active_effects.append("{color=#ffff00}ADVANTAGE: Roll twice, use higher result{/color}")
+            elif roll_type == "disadvantage":
+                active_effects.append("{color=#ff8080}DISADVANTAGE: Roll twice, use lower result{/color}")
+
             total_bonus = ability_mod + prof_bonus + other_bonuses
             return bonus_components, total_bonus, active_effects
         
@@ -110,6 +117,122 @@ init python:
         combat_manager.pending_action = {"type": "attack", "actor": actor, "target": target, "weapon": weapon}
         prompt_message = "Player, attack {}.".format(target.get_name())
         combat_manager._log_event({"event_type": "prompt", "message": prompt_message})
+
+    def ui_select_defend_action():
+        """Handle defend button - show available defensive skills"""
+        combat_manager = get_combat_manager()
+        if not combat_manager or combat_manager.combat_state != 'active': return
+        actor = combat_manager.get_current_combatant()
+        if not actor or not actor.character_data.is_player: return
+        
+        # Check available defensive skills
+        defensive_skills = []
+        if "dodge" in actor.character_data.learned_skills:
+            defensive_skills.append("dodge")
+        if "block" in actor.character_data.learned_skills:
+            defensive_skills.append("block")
+        
+        if not defensive_skills:
+            # Basic defend action if no skills available
+            combat_manager._log_event({
+                "event_type": "defend_action", 
+                "actor": actor.get_name(),
+                "message": "{} takes a basic defensive stance.".format(actor.get_name())
+            })
+            # Mark action as taken and advance turn properly
+            actor.action_taken = True
+            # Reset combat state to active
+            combat_manager.combat_state = 'active'
+            combat_manager.advance_turn()
+        else:
+            # Set combat state to show defend menu
+            combat_manager.combat_state = 'awaiting_defend_choice'
+            combat_manager.available_defend_skills = defensive_skills
+
+    def ui_select_dodge_action():
+        combat_manager = get_combat_manager()
+        if not combat_manager or combat_manager.combat_state not in ['active', 'awaiting_defend_choice']: return
+        actor = combat_manager.get_current_combatant()
+        if not actor or not actor.character_data.is_player: return
+        
+        # Check if player has dodge skill
+        if "dodge" not in actor.character_data.learned_skills:
+            combat_manager._log_event({"event_type": "action_failed", "message": "You don't know how to dodge effectively."})
+            return
+            
+        # Apply disadvantage to all opponents for their next attack
+        opponents_affected = []
+        for combatant in combat_manager.turn_order:
+            if combatant.id != actor.id and not combatant.is_defeated():
+                combatant.add_status_effect("disadvantage_next_attack", 1)
+                opponents_affected.append(combatant.get_name())
+        
+        # Log disadvantage application
+        if opponents_affected:
+            combat_manager._log_event({
+                "event_type": "status_effect_applied",
+                "message": "Disadvantage applied to: {}".format(", ".join(opponents_affected))
+            })
+        
+        # Log the dodge action
+        combat_manager._log_event({
+            "event_type": "dodge_action", 
+            "actor": actor.get_name(),
+            "message": "{} takes a defensive stance, making them harder to hit.".format(actor.get_name())
+        })
+        
+        # Mark action as taken and end player's turn
+        actor.action_taken = True
+        # Reset combat state to active
+        combat_manager.combat_state = 'active'
+        combat_manager.advance_turn()
+
+    def ui_select_block_action():
+        combat_manager = get_combat_manager()
+        if not combat_manager or combat_manager.combat_state not in ['active', 'awaiting_defend_choice']: return
+        actor = combat_manager.get_current_combatant()
+        if not actor or not actor.character_data.is_player: return
+        
+        # Check if player has block skill
+        if "block" not in actor.character_data.learned_skills:
+            combat_manager._log_event({"event_type": "action_failed", "message": "You don't know how to block effectively."})
+            return
+        
+        # Calculate block percentage: block_level * ((constitution - 10) // 2)
+        block_level = actor.character_data.learned_skills["block"]
+        con_modifier = (actor.character_data.constitution - 10) // 2
+        block_percentage = block_level * con_modifier
+        
+        # Ensure block percentage is at least 0
+        block_percentage = max(0, block_percentage)
+        
+        # Apply block effect to player for next incoming attack
+        actor.add_status_effect("block_next_attack", 1)
+        # Store the block percentage as a custom attribute
+        actor.block_percentage = block_percentage
+        
+        # Log the block action
+        combat_manager._log_event({
+            "event_type": "block_action", 
+            "actor": actor.get_name(),
+            "message": "{} raises their guard, reducing the next attack by {}%.".format(actor.get_name(), block_percentage)
+        })
+        
+        # Mark action as taken and end player's turn
+        actor.action_taken = True
+        # Reset combat state to active
+        combat_manager.combat_state = 'active'
+        combat_manager.advance_turn()
+
+    def ui_cancel_defend_menu():
+        """Cancel defend menu and return to normal combat state"""
+        combat_manager = get_combat_manager()
+        if not combat_manager: return
+        
+        # Return to active combat state
+        combat_manager.combat_state = 'active'
+        if hasattr(combat_manager, 'available_defend_skills'):
+            delattr(combat_manager, 'available_defend_skills')
 
     def ui_process_player_d20_roll(total_attack_roll, roll_type=None):
         combat_manager = get_combat_manager()
@@ -156,12 +279,12 @@ init python:
         try:
             roll_value = int(manual_roll_input)
             
-            if combat_manager.combat_state == 'awaiting_player_roll':
-                ui_process_player_d20_roll(roll_value, roll_type=roll_type)
+            if combat_manager.combat_state == 'awaiting_initiative_roll':
+                combat_manager.process_player_initiative_roll(roll_value)
+            elif combat_manager.combat_state == 'awaiting_player_roll':
+                ui_process_player_d20_roll(roll_value, roll_type)
             elif combat_manager.combat_state == 'awaiting_damage_roll':
                 ui_process_player_damage_roll(roll_value)
-            elif combat_manager.combat_state == 'awaiting_initiative_roll':
-                ui_process_player_initiative_roll(roll_value)
             
             manual_roll_input = ""
             renpy.restart_interaction()
@@ -169,6 +292,58 @@ init python:
         except (ValueError, TypeError):
             manual_roll_input = ""
             renpy.restart_interaction()
+
+    def ui_proceed_opponent_action():
+        """Manually trigger opponent action when proceed button is pressed"""
+        combat_manager = get_combat_manager()
+        if not combat_manager or combat_manager.combat_state != 'active': 
+            return
+        
+        current_combatant = combat_manager.get_current_combatant()
+        if current_combatant and not getattr(current_combatant.character_data, 'is_player', False):
+            # Manually trigger the opponent's action
+            combat_manager._process_npc_turn_manual()
+            renpy.restart_interaction()
+
+    def ui_resolve_pending_attack():
+        """Handle second proceed button to resolve the announced attack"""
+        combat_manager = get_combat_manager()
+        if combat_manager:
+            combat_manager._resolve_pending_attack()
+    
+    def ui_proceed_after_opponent_action():
+        """Handle third proceed button after opponent action completes"""
+        combat_manager = get_combat_manager()
+        if combat_manager:
+            combat_manager._proceed_after_opponent_action()
+    
+    def ui_burn_grit_point():
+        """Handle burning a grit point for an additional action during opponent's turn"""
+        combat_manager = get_combat_manager()
+        if not combat_manager:
+            return
+        
+        # Check if player can spend grit
+        if player_stats.spend_grit_point():
+            # Log the grit expenditure
+            combat_manager._log_event({
+                "event_type": "grit_spent",
+                "message": "Player burns a grit point for an additional action! ({} remaining)".format(player_stats.grit_points),
+                "grit_remaining": player_stats.grit_points
+            })
+            
+            # Set combat state to allow player action
+            combat_manager.combat_state = 'active'
+            
+            # Give the player their turn back
+            for i, combatant in enumerate(combat_manager.turn_order):
+                if getattr(combatant.character_data, 'is_player', False):
+                    combat_manager.current_turn_index = i
+                    break
+            
+            renpy.restart_interaction()
+        else:
+            renpy.notify("No grit points available!")
 
 
 screen combat_encounter():
@@ -262,7 +437,15 @@ screen combat_encounter():
                                             if participant.status_effects:
                                                 text "STATUS:" color "#FF6600" size 24 bold True
                                                 for effect in participant.status_effects:
-                                                    text "• [effect]" color "#FFAA66" size 24
+                                                    $ effect_name = effect['name']
+                                                    $ display_name = effect_name
+                                                    if effect_name == "disadvantage_next_attack":
+                                                        $ display_name = "Disadvantage on Next Attack"
+                                                    elif effect_name == "advantage_next_attack":
+                                                        $ display_name = "Advantage on Next Attack"
+                                                    elif effect_name == "block_next_attack":
+                                                        $ display_name = "Block Ready"
+                                                    text "• [display_name] ([effect['duration']])" color "#FFAA66" size 24
                 
                 # --- CENTER PANEL: LOGS (Unchanged) ---
                 vbox:
@@ -285,8 +468,12 @@ screen combat_encounter():
                                 vbox:
                                     spacing 10
                                     if combat_manager.narrative_log:
-                                        for entry in combat_manager.narrative_log:
-                                            text "[entry]" style "log_body_text"
+                                        # Show newest messages at the top with color fading
+                                        $ reversed_log = list(reversed(combat_manager.narrative_log))
+                                        for i, entry in enumerate(reversed_log):
+                                            # Simple two-color system: white for newest, grey for older
+                                            $ entry_color = "#FFFFFF" if i == 0 else "#888888"
+                                            text "[entry]" style "log_body_text" color entry_color
                                     else:
                                         text "Narrative descriptions will appear here..." color "#888888" size 20 italic True xalign 0.5
                     frame:
@@ -306,9 +493,13 @@ screen combat_encounter():
                                 vbox:
                                     spacing 10
                                     if combat_manager.mechanical_log:
-                                        for log_entry in combat_manager.mechanical_log:
+                                        # Show newest messages at the top with color fading
+                                        $ reversed_mech_log = list(reversed(combat_manager.mechanical_log))
+                                        for i, log_entry in enumerate(reversed_mech_log):
+                                            # Simple two-color system: white for newest, grey for older
+                                            $ entry_color = "#FFFFFF" if i == 0 else "#888888"
                                             $ formatted_text = format_mechanical_log_entry(log_entry)
-                                            text "[formatted_text]" style "log_body_text"
+                                            text "[formatted_text]" style "log_body_text" color entry_color
                                     else:
                                         text "Mechanical details will appear here..." color "#888888" size 20 italic True xalign 0.5
                 
@@ -405,7 +596,42 @@ screen combat_encounter():
                                 textbutton "Submit Total" action Function(submit_manual_roll) xalign 0.5  text_style "green_to_blue"
                         
                         else:
-                            text "Awaiting combat action..." size 22 color "#888888" xalign 0.5
+                            # Show proceed button when it's opponent's turn
+                            $ current_combatant = combat_manager.get_current_combatant()
+                            $ is_opponent_turn = current_combatant and not getattr(current_combatant.character_data, 'is_player', False)
+                            
+                            if is_opponent_turn and combat_manager.combat_state == 'active':
+                                vbox:
+                                    spacing 20
+                                    xalign 0.5
+                                    text "Opponent's Turn" size 24 color "#FFD700" xalign 0.5
+                                    text "[current_combatant.get_name()] is ready to act" size 18 color "#CCCCCC" xalign 0.5
+                                    
+                                    # Show both proceed and grit buttons
+                                    hbox:
+                                        spacing 20
+                                        xalign 0.5
+                                        textbutton "PROCEED" action Function(ui_proceed_opponent_action) text_style "green_to_blue" text_size 20 xsize 150 ysize 50
+                                        
+                                        # Only show grit button if player has grit points available
+                                        if player_stats.grit_points > 0:
+                                            textbutton "Burn Grit Pt: [player_stats.grit_points] remaining" action Function(ui_burn_grit_point) text_style "red_white_highlight_text" text_size 16 xsize 200 ysize 50
+                            elif combat_manager.combat_state == 'awaiting_attack_resolution':
+                                vbox:
+                                    spacing 20
+                                    xalign 0.5
+                                    text "Attack Announced" size 24 color "#FFD700" xalign 0.5
+                                    text "Click to see the results" size 18 color "#CCCCCC" xalign 0.5
+                                    textbutton "PROCEED" action Function(ui_resolve_pending_attack) text_style "green_to_blue" xalign 0.5 text_size 20 xsize 150 ysize 50
+                            elif combat_manager.combat_state == 'awaiting_post_action_proceed':
+                                vbox:
+                                    spacing 20
+                                    xalign 0.5
+                                    text "Action Complete" size 24 color "#FFD700" xalign 0.5
+                                    text "Review the results above" size 18 color "#CCCCCC" xalign 0.5
+                                    textbutton "PROCEED" action Function(ui_proceed_after_opponent_action) text_style "green_to_blue" xalign 0.5 text_size 20 xsize 150 ysize 50
+                            else:
+                                text "Awaiting combat action..." size 22 color "#888888" xalign 0.5
             
             # --- FINISHING BLOW OVERLAY (Unchanged) ---
             if combat_manager.combat_state == 'awaiting_finishing_blow':
@@ -438,10 +664,25 @@ screen combat_encounter():
                         yalign 0.5
                         $ current_combatant = combat_manager.get_current_combatant()
                         $ can_act = (current_combatant and current_combatant.character_data == player_stats and combat_manager.combat_state == 'active')
-                        textbutton "ATTACK" background "#AA0000" hover_background "#CC3333" text_color "#FFFFFF" text_hover_color "#FFFF00" text_size 24 xsize 200 ysize 60 action Function(ui_select_attack_action) sensitive can_act
-                        textbutton "DEFEND" background "#0066AA" hover_background "#3388CC" text_color "#FFFFFF" text_hover_color "#FFFF00" text_size 24 xsize 200 ysize 60 action NullAction() sensitive can_act
-                        textbutton "UTILITY" background "#6600AA" hover_background "#8833CC" text_color "#FFFFFF" text_hover_color "#FFFF00" text_size 24 xsize 200 ysize 60 action NullAction() sensitive can_act
-                        textbutton "ITEM" background "#AA6600" hover_background "#CC8833" text_color "#FFFFFF" text_hover_color "#FFFF00" text_size 24 xsize 200 ysize 60 action NullAction() sensitive can_act
+                        if combat_manager.combat_state == 'awaiting_defend_choice':
+                            # Show defend skill menu
+                            text "Choose Defensive Action:" color "#FFFFFF" size 24 bold True xalign 0.5
+                            null height 20
+                            vbox:
+                                spacing 15
+                                xalign 0.5
+                                for skill in combat_manager.available_defend_skills:
+                                    if skill == "dodge":
+                                        textbutton "DODGE" background "#0066AA" hover_background "#3388CC" text_color "#FFFFFF" text_hover_color "#FFFF00" text_size 20 xsize 180 ysize 50 action Function(ui_select_dodge_action)
+                                    elif skill == "block":
+                                        textbutton "BLOCK" background "#0066AA" hover_background "#3388CC" text_color "#FFFFFF" text_hover_color "#FFFF00" text_size 20 xsize 180 ysize 50 action Function(ui_select_block_action)
+                                textbutton "CANCEL" background "#666666" hover_background "#888888" text_color "#FFFFFF" text_hover_color "#FFFF00" text_size 20 xsize 180 ysize 50 action Function(ui_cancel_defend_menu)
+                        else:
+                            # Show normal combat actions
+                            textbutton "ATTACK" background "#AA0000" hover_background "#CC3333" text_color "#FFFFFF" text_hover_color "#FFFF00" text_size 24 xsize 200 ysize 60 action Function(ui_select_attack_action) sensitive can_act
+                            textbutton "DEFEND" background "#0066AA" hover_background "#3388CC" text_color "#FFFFFF" text_hover_color "#FFFF00" text_size 24 xsize 200 ysize 60 action Function(ui_select_defend_action) sensitive can_act
+                            textbutton "UTILITY" background "#6600AA" hover_background "#8833CC" text_color "#FFFFFF" text_hover_color "#FFFF00" text_size 24 xsize 200 ysize 60 action NullAction() sensitive can_act
+                            textbutton "ITEM" background "#AA6600" hover_background "#CC8833" text_color "#FFFFFF" text_hover_color "#FFFF00" text_size 24 xsize 200 ysize 60 action NullAction() sensitive can_act
             
             # --- Vertical control buttons (Unchanged) ---
             hbox:

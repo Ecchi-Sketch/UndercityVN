@@ -86,6 +86,10 @@ python early:
             self.skill_xp = 0
             self.proficiency_bonus = 2
             
+            # Grit system - player-only resource for additional actions
+            self.max_grit_points = 1 + ((self.level - 1) // 4)  # +1 every 4 levels
+            self.grit_points = self.max_grit_points
+            
             self.learned_skills = {}
             self.active_skills = []
             
@@ -165,6 +169,64 @@ python early:
                 self.skill_xp -= cost
                 self.recalculate_stats()
 
+        def toggle_skill(self, skill_id):
+            """Toggle a learned skill between active and inactive states"""
+            if skill_id in self.learned_skills:
+                if skill_id in self.active_skills:
+                    # Deactivate the skill
+                    self.active_skills.remove(skill_id)
+                else:
+                    # Activate the skill
+                    self.active_skills.append(skill_id)
+                # Recalculate stats since active skills affect character stats
+                self.recalculate_stats()
+
+        def can_craft(self, recipe_id):
+            """Check if a recipe can be crafted and return reason if not"""
+            if recipe_id not in recipe_database:
+                return False, "Recipe not found"
+            
+            recipe = recipe_database[recipe_id]
+            
+            # Check if required skill is met
+            if recipe.required_skill:
+                if recipe.required_skill not in self.learned_skills:
+                    return False, f"Requires {skill_database[recipe.required_skill].name if recipe.required_skill in skill_database else recipe.required_skill} skill"
+                if self.learned_skills[recipe.required_skill] < recipe.skill_level:
+                    return False, f"Requires {skill_database[recipe.required_skill].name if recipe.required_skill in skill_database else recipe.required_skill} level {recipe.skill_level}"
+            
+            # Check if all ingredients are available
+            for item_id, required_amount in recipe.ingredients.items():
+                available_amount = self.inventory.get(item_id, 0)
+                if available_amount < required_amount:
+                    item_name = item_database[item_id].name if item_id in item_database else item_id
+                    return False, f"Need {required_amount - available_amount} more {item_name}"
+            
+            return True, ""
+
+        def craft_item(self, recipe_id):
+            """Craft an item if possible - does not return value to prevent game advancement"""
+            can_craft, reason = self.can_craft(recipe_id)
+            if not can_craft:
+                renpy.notify(f"Cannot craft: {reason}")
+                return  # No return value to prevent dialogue advancement
+            
+            recipe = recipe_database[recipe_id]
+            
+            # Remove ingredients from inventory
+            for item_id, required_amount in recipe.ingredients.items():
+                self.inventory[item_id] -= required_amount
+                if self.inventory[item_id] == 0:
+                    del self.inventory[item_id]
+            
+            # Add crafted item to inventory
+            self.add_item(recipe.result_item_id, recipe.result_amount)
+            
+            # Notify player of successful crafting
+            item_name = item_database[recipe.result_item_id].name if recipe.result_item_id in item_database else recipe.result_item_id
+            renpy.notify(f"Crafted {recipe.result_amount}x {item_name}!")
+            # No return value to prevent dialogue advancement
+
         def add_item(self, item_id, amount=1):
             if item_id in self.inventory: self.inventory[item_id] += amount
             else: self.inventory[item_id] = amount
@@ -198,18 +260,46 @@ python early:
                         for effect, value in item.effects.items():
                             if effect == "heal" or effect == "heal_amount":
                                 # Heal the character
-                                old_hp = self.hp
-                                
-                                # Log debug information to combat log
                                 combat_manager = get_combat_manager()
-                                if combat_manager:
-                                    combat_manager._log_event({
-                                        "event_type": "consumable_debug",
-                                        "message": "DEBUG: Current HP: {}/{}, Healing Value: {}".format(self.hp, self.max_hp, value)
-                                    })
                                 
-                                self.hp = min(self.max_hp, self.hp + value)
-                                healed = self.hp - old_hp
+                                # CRITICAL FIX: Use combat HP if in combat, otherwise use character HP
+                                if combat_manager:
+                                    # Find the player's combatant to get the correct current HP
+                                    player_combatant = None
+                                    for combatant in combat_manager.turn_order:
+                                        if getattr(combatant.character_data, 'is_player', False):
+                                            player_combatant = combatant
+                                            break
+                                    
+                                    if player_combatant:
+                                        old_hp = player_combatant.current_hp
+                                        combat_manager._log_event({
+                                            "event_type": "consumable_debug",
+                                            "message": "DEBUG: Combat HP: {}/{}, Healing Value: {}".format(old_hp, self.max_hp, value)
+                                        })
+                                        
+                                        # Apply healing to combat HP
+                                        new_hp = min(self.max_hp, old_hp + value)
+                                        healed = new_hp - old_hp
+                                        
+                                        # Update both combat and character HP
+                                        player_combatant.current_hp = new_hp
+                                        self.hp = new_hp
+                                        
+                                        combat_manager._log_event({
+                                            "event_type": "consumable_debug",
+                                            "message": "DEBUG: Healed {} HP. New HP: {}/{}".format(healed, new_hp, self.max_hp)
+                                        })
+                                    else:
+                                        # Fallback to character HP if combatant not found
+                                        old_hp = self.hp
+                                        self.hp = min(self.max_hp, self.hp + value)
+                                        healed = self.hp - old_hp
+                                else:
+                                    # Not in combat, use character HP normally
+                                    old_hp = self.hp
+                                    self.hp = min(self.max_hp, self.hp + value)
+                                    healed = self.hp - old_hp
                                 
                                 # Log healing calculation debug to combat log
                                 if combat_manager:
@@ -245,6 +335,17 @@ python early:
                     return
             # Return nothing to prevent game advancement
         
+        def spend_grit_point(self):
+            """Spend a grit point if available. Returns True if successful, False if no grit available."""
+            if self.grit_points > 0:
+                self.grit_points -= 1
+                return True
+            return False
+        
+        def restore_grit_points(self):
+            """Restore grit points to maximum (for rest/recovery)"""
+            self.grit_points = self.max_grit_points
+        
         def get_xp_for_next_level(self):
             return xp_thresholds.get(self.level + 1, 999999)
 
@@ -257,6 +358,11 @@ python early:
             while self.base_xp >= self.get_xp_for_next_level():
                 self.level += 1
                 self.proficiency_bonus = 2 + ((self.level - 1) // 4)
+                # Update grit points when leveling up (same timing as proficiency bonus)
+                new_max_grit = 1 + ((self.level - 1) // 4)
+                if new_max_grit > self.max_grit_points:
+                    self.max_grit_points = new_max_grit
+                    self.grit_points = self.max_grit_points  # Restore to full on level up
 
 #==============================================================================
 # STYLES & DIALOGUE CHARACTER DEFINITIONS
@@ -291,7 +397,7 @@ style combat_mechanical_text is default:
     bold True
 
 style log_body_text is default:
-    size 30
+    size 32
     color "#FFFFFF"
     bold False
 

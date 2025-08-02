@@ -41,21 +41,19 @@ init python:
     # --- Function to get player gender and pronouns ---
     def get_player_gender_display():
         """
-        Gets player gender and pronoun information for character sheet display.
-        Returns formatted string with gender and pronouns.
+        Gets player gender information for character sheet display.
+        Returns formatted string with gender only.
         """
         try:
             gender = getattr(player_stats, 'gender', 'Unspecified')
-            pronouns = getattr(player_stats, 'pronouns', {'subject': 'they', 'object': 'them', 'possessive': 'their'})
             
             # Capitalize gender for display
             gender_display = gender.capitalize() if gender != 'unspecified' else 'Unspecified'
-            pronoun_display = f"{pronouns['subject']}/{pronouns['object']}/{pronouns['possessive']}"
             
-            return f"{gender_display} ({pronoun_display})"
+            return gender_display
             
         except (AttributeError, NameError):
-            return "Unspecified (they/them/their)"
+            return "Unspecified"
 
 # Screen for the button that toggles the character sheet.
 screen player_hud():
@@ -74,7 +72,7 @@ screen player_stats_screen():
         yalign 0.5
         xsize 2560
         yminimum 600
-        ymaximum 1500
+        ymaximum 1600
         padding (30, 30)
 
         vbox:
@@ -109,6 +107,9 @@ screen player_stats_screen():
                         hbox:
                             text "HP:" xsize 150
                             text "[player_stats.hp] / [player_stats.max_hp]"
+                        hbox:
+                            text "Grit:" xsize 150
+                            text "[player_stats.grit_points] / [player_stats.max_grit_points]"
                         
                         # --- Current Location ---
                         null height 5
