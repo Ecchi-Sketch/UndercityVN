@@ -1,5 +1,8 @@
 label Act1_Scene1_intro:
 
+    # Reset discovery attempts for all locations on new game start
+    $ reset_all_discovery_attempts()
+    
     show screen player_hud
 
     "Act1 Scene 1 Test narration"
@@ -23,6 +26,8 @@ label Act1_Scene1_intro:
     "You find some cloth scraps and pocket them."
     $ player_stats.add_item("herb", 4)
     "You find some herbs growing between the cobblestones and collect them."
+    $ player_stats.add_item("master_lockpick", 1)
+    "You find a set of Master Lockpicks and pocket them."
     $ player_stats.learn_skill("new_kid_in_town")
     "You acquired the skill: New Kid in Town!"
     $ player_stats.learn_skill("test_skill")
@@ -36,9 +41,9 @@ label Act1_Scene1_intro:
 
 
 label Act1_Scene2_Welcome:
-
-    jump test_combat
-    "Act 1 Scene 2 Test narration"
-    player "My Stats are: str:[player_stats.strength], dex:[player_stats.dexterity]"
+    jump discovery_path_journey
+   # jump test_combat
+   # "Act 1 Scene 2 Test narration"
+   # player "My Stats are: str:[player_stats.strength], dex:[player_stats.dexterity]"
 
     return

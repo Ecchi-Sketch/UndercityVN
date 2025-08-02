@@ -363,6 +363,144 @@ python early:
                 if new_max_grit > self.max_grit_points:
                     self.max_grit_points = new_max_grit
                     self.grit_points = self.max_grit_points  # Restore to full on level up
+        
+        # =======================================================================
+        # DISCOVERY SYSTEM METHODS
+        # =======================================================================
+        
+        def get_discovery_modifiers(self):
+            """Calculate all discovery modifiers from skills and equipment"""
+            flat_bonus = 0
+            has_advantage = False
+            has_disadvantage = False
+            
+            # Check skills
+            if "investigation" in self.learned_skills:
+                flat_bonus += self.learned_skills["investigation"]
+            if "perception" in self.learned_skills:
+                if self.learned_skills["perception"] >= 3:
+                    has_advantage = True
+            
+            # Check equipped items
+            for item in self.equipped_items:
+                if item and hasattr(item, 'effects'):
+                    if "discovery_bonus" in item.effects:
+                        flat_bonus += item.effects["discovery_bonus"]
+                    if "discovery_advantage" in item.effects:
+                        has_advantage = True
+                    if "discovery_disadvantage" in item.effects:
+                        has_disadvantage = True
+            
+            return {
+                "flat_bonus": flat_bonus,
+                "advantage": has_advantage and not has_disadvantage,
+                "disadvantage": has_disadvantage and not has_advantage
+            }
+        
+        def perform_discovery_roll(self):
+            """Perform a discovery roll and return results instead of calling screens directly"""
+            current_location = get_current_location_node()
+            
+            # Check if discovery is possible
+            if current_location.discovery_level == "empty":
+                return {
+                    "base_roll": 0,
+                    "modifiers": {},
+                    "final_roll": 0,
+                    "discovery_level": "empty",
+                    "item_id": None,
+                    "success": False
+                }
+            
+            # Check if location has already been searched
+            if current_location.discovery_attempts >= 1:
+                return {
+                    "base_roll": 0,
+                    "modifiers": {},
+                    "final_roll": 0,
+                    "discovery_level": "already_searched",
+                    "item_id": None,
+                    "success": False
+                }
+            
+            # Get modifiers
+            modifiers = self.get_discovery_modifiers()
+            
+            # Perform base roll
+            import random
+            base_roll = random.randint(1, 20)
+            
+            # Apply advantage/disadvantage
+            if modifiers["advantage"]:
+                second_roll = random.randint(1, 20)
+                base_roll = max(base_roll, second_roll)
+            elif modifiers["disadvantage"]:
+                second_roll = random.randint(1, 20)
+                base_roll = min(base_roll, second_roll)
+            
+            # Apply flat bonuses
+            final_roll = base_roll + modifiers["flat_bonus"]
+            
+            # Determine discovery level
+            discovery_level = self.get_discovery_level(final_roll, current_location.discovery_ranges)
+            
+            # Get random item
+            discovered_item = self.get_random_discovery_item(discovery_level)
+            
+            # Increment discovery attempts counter to prevent repeat searches
+            current_location.discovery_attempts += 1
+            
+            # Add item to inventory if found
+            if discovered_item:
+                self.add_item(discovered_item)
+                return {
+                    "base_roll": base_roll,
+                    "modifiers": modifiers,
+                    "final_roll": final_roll,
+                    "discovery_level": discovery_level,
+                    "item_id": discovered_item,
+                    "success": True
+                }
+            else:
+                return {
+                    "base_roll": base_roll,
+                    "modifiers": modifiers,
+                    "final_roll": final_roll,
+                    "discovery_level": "nothing",
+                    "item_id": None,
+                    "success": False
+                }
+        
+        def get_discovery_level(self, roll, ranges):
+            """Determine discovery level based on roll and location ranges"""
+            if roll >= ranges["epic"][0] and roll <= ranges["epic"][1]:
+                return "epic"
+            elif roll >= ranges["rare"][0] and roll <= ranges["rare"][1]:
+                return "rare"
+            elif roll >= ranges["normal"][0] and roll <= ranges["normal"][1]:
+                return "normal"
+            else:
+                return "nothing"
+        
+        def get_random_discovery_item(self, discovery_level):
+            """Get a random item with the appropriate discovery tag"""
+            import random
+            
+            if discovery_level == "nothing":
+                return None
+            
+            # Find all items with the appropriate discovery tag
+            tag_name = f"discover_{discovery_level}"
+            matching_items = []
+            
+            for item_id, item in item_database.items():
+                if tag_name in item.tags:
+                    matching_items.append(item_id)
+            
+            if matching_items:
+                return random.choice(matching_items)
+            else:
+                return None
 
 #==============================================================================
 # STYLES & DIALOGUE CHARACTER DEFINITIONS
@@ -465,7 +603,12 @@ style white_to_blue is default:
     size 30
     color "#ffffff"
     bold True
-    hover_color "#aaddff"    
+    hover_color "#aaddff"
+
+style small_gray is default:
+    size 30
+    color "#898989"
+    bold True   
 
 style inventory_button_text is default:
     size 30

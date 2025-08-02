@@ -22,17 +22,17 @@ init python:
 
     profiles = {
         "Boxer": Profile(
-            "The Boxer", hp=200, ac=1, str=16, dex=12, con=140, intl=8, wis=10, cha=10,
+            "The Boxer", hp=30, ac=13, str=15, dex=13, con=16, intl=8, wis=10, cha=12,
             summary="A straightforward brawler. You solve problems with your fists and intimidate those who stand in your way. You're tough, direct, and your powerful punches are your most valuable asset.",
             backstory="You made a name for yourself in the fighting pits of a lesser city. Seeking bigger prizes and tougher competition, you came to the City of Progress, but your reputation for violence preceded you, leading to a hasty stowaway journey to escape the law."
         ),
         "Thief": Profile(
-            "The Thief", hp=16, ac=15, str=10, dex=16, con=10, intl=12, wis=14, cha=8,
+            "The Thief", hp=20, ac=15, str=8, dex=15, con=13, intl=14, wis=12, cha=10,
             summary="A creature of the shadows. You avoid direct confrontation, preferring to use stealth and cunning to achieve your goals. You excel at finding hidden paths and noticing details others miss.",
             backstory="Orphaned on the streets, you learned early that survival meant being quicker and quieter than everyone else. After a heist went wrong, you stowed away on the first airship out, leaving your past and a very angry guild behind you."
         ),
         "Con-man": Profile(
-            "The Con-man", hp=16, ac=12, str=8, dex=12, con=10, intl=14, wis=10, cha=16,
+            "The Con-man", hp=15, ac=12, str=8, dex=14, con=10, intl=13, wis=12, cha=15,
             summary="A silver-tongued devil. Your greatest weapon is your wit. You can talk your way into the most secure vaults and out of the tightest spots. Deception and persuasion are the tools of your trade.",
             backstory="You've always lived by your wits, swindling merchants and nobles with elaborate schemes. But a con targeting the wrong person forced you to flee with nothing but the clothes on your back and a ticket for the nearest airship."
         )

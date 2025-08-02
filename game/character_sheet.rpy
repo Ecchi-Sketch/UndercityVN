@@ -61,6 +61,9 @@ screen player_hud():
     textbutton "Character" action ToggleScreen("player_stats_screen"):
         xalign 0.01
         yalign 0.01
+    textbutton "Discovery" action Show("discovery_menu_screen"):
+        xalign 0.01
+        yalign 0.06
 
 # Screen for displaying player stats, inventory, and equipment.
 screen player_stats_screen():
@@ -72,7 +75,7 @@ screen player_stats_screen():
         yalign 0.5
         xsize 2560
         yminimum 600
-        ymaximum 1600
+        ymaximum 1650
         padding (30, 30)
 
         vbox:
@@ -118,11 +121,11 @@ screen player_stats_screen():
                             spacing 2
                             text "[get_current_node_display()]":
                                 style "item_text"
-                                size 20
+                                size 24
                                 color "#00CCFF"
                             text "(Node-based mapping system)":
                                 style "description_text"
-                                size 16
+                                size 22
                                 color "#888888"
                         
                         # --- Gender ---
@@ -130,13 +133,13 @@ screen player_stats_screen():
                         text "Gender" style "subheader_text" size 24
                         text "[get_player_gender_display()]":
                             style "item_text"
-                            size 20
+                            size 24
                             color "#FFB366"  # Orange color for gender display
                         
                         null height 10
                         hbox:
-                            text "AC:" xsize 150
-                            text "[player_stats.ac]"
+                            text "AC:" xsize 150 style "item_text"
+                            text "[player_stats.ac]" style "item_text"
                         hbox:
                             text "ATK Bonus:" xsize 550 style "item_text"
                             text "+[player_stats.atk_bonus]" style "item_text"
@@ -725,3 +728,201 @@ screen crafting_screen():
                                     text "No items of this type in inventory." style "inactive_text"
                             else:
                                 text "Inventory is empty" style "inactive_text"
+
+# =======================================================================
+# DISCOVERY SYSTEM SCREENS
+# =======================================================================
+
+# Discovery menu popup - shows available discovery options
+screen discovery_menu_screen():
+    modal True
+    zorder 200
+    
+    frame:
+        xalign 0.5
+        yalign 0.5
+        xsize 500
+        ysize 600
+        padding (30, 30)
+        
+        vbox:
+            spacing 20
+            xalign 0.5
+            
+            text "Discovery Options" size 40 xalign 0.5 style "subheader_text"
+            
+            null height 20
+            
+            # Check if current location allows item discovery
+            $ current_location = get_current_location_node()
+            $ can_search_items = current_location.discovery_level != "empty" and current_location.discovery_attempts < 1
+            $ already_searched = current_location.discovery_attempts >= 1
+            
+            if can_search_items:
+                textbutton "Search for items" action [Hide("discovery_menu_screen"), Show("discovery_roll_screen")]:
+                    xalign 0.5
+                    text_style "white_to_blue"
+            elif already_searched:
+                textbutton "Search for items (Already searched)":
+                    xalign 0.5
+                    text_style "small_gray"
+                    action NullAction()
+            else:
+                textbutton "Search for items (Nothing here)":
+                    xalign 0.5
+                    text_style "small_gray"
+                    action NullAction()
+            
+            textbutton "Observe area":
+                xalign 0.5
+                text_style "small_gray"
+                action NullAction()  # Placeholder for future implementation
+            
+            null height 20
+            
+            textbutton "Cancel" action Hide("discovery_menu_screen"):
+                xalign 0.5
+                text_style "red_white_highlight_text"
+
+# Discovery roll screen - shows modifiers and roll button
+screen discovery_roll_screen():
+    modal True
+    zorder 200
+    
+    frame:
+        xalign 0.5
+        yalign 0.5
+        xsize 600
+        ysize 700
+        padding (30, 30)
+        
+        vbox:
+            spacing 20
+            xalign 0.5
+            
+            text "Item Discovery" size 40 xalign 0.5 style "subheader_text"
+            
+            null height 20
+            
+            text "Rolling for discovery..." xalign 0.5 size 30
+            
+            null height 20
+            
+            # Show modifiers that will be applied
+            $ modifiers = player_stats.get_discovery_modifiers()
+            
+            if modifiers["flat_bonus"] > 0:
+                text "Bonus: +[modifiers['flat_bonus']]" xalign 0.5 size 25 color "#aaddff"
+            
+            if modifiers["advantage"]:
+                text "Advantage: Roll twice, take higher" xalign 0.5 size 25 color "#aaddff"
+            
+            if modifiers["disadvantage"]:
+                text "Disadvantage: Roll twice, take lower" xalign 0.5 size 25 color "#ff6666"
+            
+            if modifiers["flat_bonus"] == 0 and not modifiers["advantage"] and not modifiers["disadvantage"]:
+                text "No modifiers" xalign 0.5 size 25 color "#888888"
+            
+            null height 30
+            
+            textbutton "ROLL" action [Hide("discovery_roll_screen"), Call("perform_discovery_action")]:
+                xalign 0.5
+                text_style "white_to_blue"
+                text_size 35
+            
+            null height 20
+            
+            textbutton "Cancel" action Hide("discovery_roll_screen"):
+                xalign 0.5
+                text_style "red_white_highlight_text"
+
+# Discovery result screen - shows roll results and discovered item
+screen discovery_result_screen(base_roll, modifiers, final_roll, discovery_level, item_id):
+    modal True
+    zorder 200
+    
+    frame:
+        xalign 0.5
+        yalign 0.5
+        xsize 700
+        ysize 700
+        padding (30, 30)
+        
+        vbox:
+            spacing 15
+            xalign 0.5
+            
+            text "Discovery Results" size 40 xalign 0.5 style "subheader_text"
+            
+            null height 20
+            
+            # Roll breakdown
+            text "Roll Breakdown:" size 30 xalign 0.5
+            
+            hbox:
+                xalign 0.5
+                spacing 10
+                text "Base Roll: [base_roll]" size 25
+                
+                if modifiers["advantage"]:
+                    text "(Advantage)" size 20 color "#aaddff"
+                elif modifiers["disadvantage"]:
+                    text "(Disadvantage)" size 20 color "#ff6666"
+            
+            if modifiers["flat_bonus"] > 0:
+                text "Modifiers: +[modifiers['flat_bonus']]" size 25 xalign 0.5 color "#aaddff"
+            
+            text "Final Roll: [final_roll]" size 30 xalign 0.5 style "combat_mechanical_text"
+            
+            null height 20
+            
+            # Discovery result
+            if discovery_level == "nothing":
+                text "No Discovery" size 35 xalign 0.5 color "#888888"
+                text "You found nothing of interest." size 25 xalign 0.5
+            else:
+                if discovery_level == "normal":
+                    $ level_color = "#ffffff"
+                    $ level_text = "NORMAL Discovery!"
+                elif discovery_level == "rare":
+                    $ level_color = "#aaddff"
+                    $ level_text = "RARE Discovery!"
+                elif discovery_level == "epic":
+                    $ level_color = "#ffaa00"
+                    $ level_text = "EPIC Discovery!"
+                
+                text "[level_text]" size 35 xalign 0.5 color level_color
+                
+                if item_id and item_id in item_database:
+                    $ discovered_item = item_database[item_id]
+                    text "Found: [discovered_item.name]" size 30 xalign 0.5 style "item_text"
+                    text "[discovered_item.description]" size 22 xalign 0.5 style "description_text"
+                else:
+                    text "Found: Unknown Item" size 30 xalign 0.5
+            
+            null height 30
+            
+            textbutton "Continue" action Return():
+                xalign 0.5
+                text_style "white_to_blue"
+
+# Label to handle discovery roll action without interaction conflicts
+label perform_discovery_action:
+    # Perform the discovery roll and get results
+    $ discovery_results = player_stats.perform_discovery_roll()
+    
+    # Handle already searched locations
+    if discovery_results["discovery_level"] == "already_searched":
+        "You've already searched this area thoroughly. There's nothing more to find here."
+        return
+    
+    # Show the results screen with the returned data
+    call screen discovery_result_screen(
+        base_roll=discovery_results["base_roll"],
+        modifiers=discovery_results["modifiers"],
+        final_roll=discovery_results["final_roll"],
+        discovery_level=discovery_results["discovery_level"],
+        item_id=discovery_results["item_id"]
+    )
+    
+    return

@@ -36,6 +36,16 @@ init python:
             self.regional_atmosphere = ""
             self.district_details = ""
             
+            # Discovery system properties
+            self.discovery_level = "normal"  # "empty", "normal", "rare", "epic"
+            self.discovery_ranges = {
+                "normal": (10, 15),
+                "rare": (16, 19),
+                "epic": (20, 20)
+            }
+            self.discovery_attempts = 0
+            self.discovery_cooldown = 0
+            
         def set_details(self, description, atmosphere, environmental_factors, combat_implications):
             """Set the detailed information for this location."""
             self.description = description
@@ -48,6 +58,13 @@ init python:
             """Set regional and district context information."""
             self.regional_atmosphere = regional_atmosphere
             self.district_details = district_details
+            return self
+            
+        def set_discovery_properties(self, discovery_level="normal", custom_ranges=None):
+            """Set discovery properties for this location."""
+            self.discovery_level = discovery_level
+            if custom_ranges:
+                self.discovery_ranges = custom_ranges
             return self
             
         def get_formatted_display(self):
@@ -242,6 +259,43 @@ init python:
             "debris and salvage as improvised weapons, unstable structures that could collapse, poor visibility"
         )
         
+        # Path from CRASHPAD to TAVERN - 4 intermediate locations with different discovery levels
+        add_location(
+            "ZAUN-INDUSTRIALZONE-SCRAP_YARD-EMPTY_SECTION",
+            "Scrap Yard - Empty Section",
+            "a barren section of the scrap yard that has been picked clean",
+            "empty metal frameworks, scattered rust flakes, wind whistling through hollow structures",
+            "unstable metal debris, sharp edges everywhere, poor footing on loose scrap",
+            "sharp metal debris as weapons, unstable footing, potential cuts from rusty edges"
+        ).set_discovery_properties("empty")
+        
+        add_location(
+            "ZAUN-INDUSTRIALZONE-MAINTENANCE_TUNNEL-CONNECTING_PASSAGE",
+            "Maintenance Tunnel - Connecting Passage",
+            "a narrow maintenance tunnel connecting different industrial sections",
+            "exposed pipes and cables, dim emergency lighting, echoing footsteps",
+            "cramped spaces, exposed electrical hazards, dripping condensation",
+            "limited mobility in narrow space, electrical hazards, pipes as cover or weapons"
+        ).set_discovery_properties("normal")
+        
+        add_location(
+            "ZAUN-ENTRESOLS-ABANDONED_WORKSHOP-STORAGE_ROOM",
+            "Abandoned Workshop - Storage Room",
+            "a forgotten storage room filled with old tools and rare components",
+            "dust-covered workbenches, shelves of forgotten parts, filtered light through grimy windows",
+            "cluttered with valuable salvage, unstable shelving, poor visibility from dust",
+            "abundant improvised weapons from tools, falling shelves as hazards, dust clouds obscuring vision"
+        ).set_discovery_properties("rare")
+        
+        add_location(
+            "ZAUN-ENTRESOLS-HIDDEN_CACHE-SECRET_CHAMBER",
+            "Hidden Cache - Secret Chamber",
+            "a concealed chamber containing valuable pre-war artifacts and rare materials",
+            "pristine pre-war equipment, soft blue glow from hextech remnants, untouched by time",
+            "delicate ancient machinery, valuable artifacts, unstable hextech energy",
+            "fragile valuable equipment, potential hextech discharge, ancient weapons as rare finds"
+        ).set_discovery_properties("epic")
+        
         add_location(
             "ZAUN-ENTRESOLS-WORKSHOP-MAIN_FLOOR",
             "Entresols Workshop - Main Floor", 
@@ -286,6 +340,12 @@ init python:
     
     # Create the global location database
     LOCATION_DATABASE = create_location_database()
+    
+    def reset_all_discovery_attempts():
+        """Reset discovery attempts for all locations - called on new game start"""
+        for location_node in LOCATION_DATABASE.values():
+            location_node.discovery_attempts = 0
+            location_node.discovery_cooldown = 0
     
     # =======================================================================
     # LOCATION UTILITY FUNCTIONS

@@ -202,5 +202,90 @@ label initialize_items:
         )
 
         # --- MISCELLANEOUS ITEMS ---
+        
+        # --- DISCOVERABLE ITEMS ---
+        
+        # Normal Discovery Items
+        item_database["scrap_metal"] = Item(
+            name="Scrap Metal",
+            description="Twisted pieces of metal that could be useful for crafting.",
+            category="misc",
+            cost=3,
+            tags=["Misc", "Crafting", "Material", "discover_normal"]
+        )
+        
+        item_database["old_bolt"] = Item(
+            name="Old Bolt",
+            description="A rusty but still functional bolt. Common salvage in Zaun.",
+            category="misc",
+            cost=1,
+            tags=["Misc", "Crafting", "Material", "discover_normal"]
+        )
+        
+        item_database["worn_leather"] = Item(
+            name="Worn Leather",
+            description="Weathered leather scraps, still usable for repairs.",
+            category="misc",
+            cost=4,
+            tags=["Misc", "Crafting", "Material", "discover_normal"]
+        )
+        
+        # Rare Discovery Items
+        item_database["shimmer_residue"] = Item(
+            name="Shimmer Residue",
+            description="Crystallized shimmer that enhances physical capabilities temporarily.",
+            category="consumable",
+            effects={"str_temp_bonus": 2, "duration": 3},
+            cost=25,
+            tags=["Consumable", "Enhancement", "Shimmer", "discover_rare"]
+        )
+        
+        item_database["hextech_fragment"] = Item(
+            name="Hextech Fragment",
+            description="A small piece of hextech crystal that pulses with magical energy.",
+            category="misc",
+            cost=50,
+            tags=["Misc", "Magical", "Hextech", "Valuable", "discover_rare"]
+        )
+        
+        item_database["precision_tools"] = Item(
+            name="Precision Tools",
+            description="High-quality tools that aid in detailed work and investigation.",
+            category="equippable",
+            slot="accessory",
+            effects={"discovery_bonus": 2},
+            cost=35,
+            tags=["Equippable", "Accessory", "Investigation", "discover_rare"]
+        )
+        
+        # Epic Discovery Items
+        item_database["zaun_relic"] = Item(
+            name="Ancient Zaun Relic",
+            description="A mysterious artifact from old Zaun, humming with unknown power.",
+            category="equippable",
+            slot="accessory",
+            effects={"discovery_advantage": True, "max_hp_bonus": 5},
+            cost=100,
+            tags=["Equippable", "Accessory", "Relic", "Magical", "discover_epic"]
+        )
+        
+        item_database["master_lockpick"] = Item(
+            name="Master's Lockpick Set",
+            description="Legendary lockpicks used by the greatest thieves of Zaun.",
+            category="equippable",
+            slot="accessory",
+            effects={"discovery_bonus": 3, "stealth_bonus": 2},
+            cost=75,
+            tags=["Equippable", "Accessory", "Legendary", "Thievery", "discover_epic"]
+        )
+        
+        item_database["pure_shimmer_vial"] = Item(
+            name="Pure Shimmer Vial",
+            description="An incredibly rare vial of pure, uncut shimmer.",
+            category="consumable",
+            effects={"heal_amount": 25, "str_temp_bonus": 3, "duration": 5},
+            cost=150,
+            tags=["Consumable", "Healing", "Enhancement", "Shimmer", "Legendary", "discover_epic"]
+        )
 
     return

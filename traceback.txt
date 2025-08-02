@@ -1,101 +1,50 @@
 ﻿I'm sorry, but an uncaught exception occurred.
 
-While processing text tag {'name': 'disadvantage_next_attack', 'duration': 1} in 'While processing text tag {\'name\': \'disadvantage_next_attack\', \'duration\': 1} in "• {\'name\': \'disadvantage_next_attack\', \'duration\': 1}".:'.:
-  File "game/test_combat.rpy", line 25, in script call
-    call start_combat(opponents_for_this_fight)
-  File "game/combat_integration.rpy", line 122, in script
-    call screen combat_encounter
-  File "renpy/display/render.pyx", line 487, in renpy.display.render.render_screen
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 313, in renpy.display.render.render_for_size
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-Exception: Unknown text tag "'name': 'disadvantage_next_attack', 'duration': 1"
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "game/test_combat.rpy", line 25, in script call
-    call start_combat(opponents_for_this_fight)
-  File "game/combat_integration.rpy", line 122, in script
-    call screen combat_encounter
-  File "game/test_combat.rpy", line 25, in script call
-    call start_combat(opponents_for_this_fight)
-  File "game/combat_integration.rpy", line 122, in script
-    call screen combat_encounter
-  File "renpy/display/render.pyx", line 487, in renpy.display.render.render_screen
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 313, in renpy.display.render.render_for_size
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 313, in renpy.display.render.render_for_size
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-Exception: Unknown text tag "'name': 'disadvantage_next_attack', 'duration': 1"
+While running game code:
+  File "game/GameScripts/StoryScripts/discovery_path_scene.rpy", line 24, in script
+    "Empty metal frameworks stretch before you, with scattered rust flakes dancing in the wind that whistles through the hollow structures."
+  File "game/character_sheet.rpy", line 737, in execute
+    screen discovery_menu_screen():
+  File "game/character_sheet.rpy", line 737, in execute
+    screen discovery_menu_screen():
+  File "game/character_sheet.rpy", line 741, in execute
+    frame:
+  File "game/character_sheet.rpy", line 748, in execute
+    vbox:
+  File "game/character_sheet.rpy", line 761, in execute
+    if can_search_items:
+  File "game/character_sheet.rpy", line 771, in execute
+    textbutton "Search for items (Nothing here)":
+  File "game/character_sheet.rpy", line 771, in keywords
+    textbutton "Search for items (Nothing here)":
+  File "game/character_sheet.rpy", line 773, in <module>
+    style small_gray
+          ^^^^^^^^^^
+NameError: name 'small_gray' is not defined
 
 -- Full Traceback ------------------------------------------------------------
 
 Traceback (most recent call last):
-  File "game/test_combat.rpy", line 25, in script call
-    call start_combat(opponents_for_this_fight)
-  File "game/combat_integration.rpy", line 122, in script
-    call screen combat_encounter
-  File "renpy/ast.py", line 2231, in execute
-    self.call("execute")
-    ~~~~~~~~~^^^^^^^^^^^
-  File "renpy/ast.py", line 2195, in call
-    return renpy.statements.call(method, parsed, *args, **kwargs)
-           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/statements.py", line 379, in call
-    return method(parsed, *args, **kwargs)
-           ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/common/000statements.rpy", line 695, in execute_call_screen
-    store._return = renpy.call_screen(name, *args, **kwargs)
-                    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/exports/statementexports.py", line 348, in call_screen
-    rv = renpy.ui.interact(mouse="screen", type="screen", roll_forward=roll_forward)
-         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "game/GameScripts/StoryScripts/discovery_path_scene.rpy", line 24, in script
+    "Empty metal frameworks stretch before you, with scattered rust flakes dancing in the wind that whistles through the hollow structures."
+  File "renpy/ast.py", line 2915, in execute
+    Say.execute(self)
+    ~~~~~~~~~~~^^^^^^
+  File "renpy/ast.py", line 991, in execute
+    renpy.exports.say(who, what, *args, **kwargs)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "renpy/exports/sayexports.py", line 129, in say
+    who(what, *args, **kwargs)
+    ~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "renpy/character.py", line 1543, in __call__
+    self.do_display(who, what, cb_args=self.cb_args, dtt=dtt, **display_args)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "renpy/character.py", line 1198, in do_display
+    display_say(who, what, self.do_show, **display_args)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "renpy/character.py", line 888, in display_say
+    rv = renpy.ui.interact(mouse="say", type=type, roll_forward=roll_forward)
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "renpy/ui.py", line 304, in interact
     rv = renpy.game.interface.interact(roll_forward=roll_forward, **kwargs)
          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -109,245 +58,56 @@ Traceback (most recent call last):
         ^^^^^^^^^
     )  # type: ignore
     ^                
-  File "renpy/display/core.py", line 2890, in interact_core
-    self.draw_screen(root_widget, fullscreen_video, (not fullscreen_video) or video_frame_drawn)
-    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/core.py", line 1380, in draw_screen
-    surftree = renpy.display.render.render_screen(
-               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
-        root_widget,
-        ^^^^^^^^^^^^
-        renpy.config.screen_width,
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^
-        renpy.config.screen_height,
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    )
-    ^
-  File "renpy/display/render.pyx", line 487, in renpy.display.render.render_screen
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/layout.py", line 899, in render
-    surf = render(child, width, height, cst, cat)
-           ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/layout.py", line 899, in render
-    surf = render(child, width, height, cst, cat)
-           ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/layout.py", line 899, in render
-    surf = render(child, width, height, cst, cat)
-           ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/screen.py", line 767, in render
-    child = renpy.display.render.render(self.child, w, h, st, at)
-            ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/layout.py", line 899, in render
-    surf = render(child, width, height, cst, cat)
-           ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/layout.py", line 1442, in render
-    surf = render(child, width - cxmargin - cxpadding, height - cymargin - cypadding, st, at)
-           ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/layout.py", line 899, in render
-    surf = render(child, width, height, cst, cat)
-           ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/layout.py", line 1107, in render
-    surf = render(d, rw, height - y, cst, cat)
-           ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/layout.py", line 1442, in render
-    surf = render(child, width - cxmargin - cxpadding, height - cymargin - cypadding, st, at)
-           ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/layout.py", line 1162, in render
-    surf = render(d, width - x, rh, cst, cat)
-           ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/layout.py", line 1953, in render
-    cwidth, cheight = sizeit("c", width, height, 0, 0)
-                      ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/layout.py", line 1950, in sizeit
-    rend = renpy.display.render.render_for_size(pos_d[pos], width, height, st, at)
-           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/render.pyx", line 313, in renpy.display.render.render_for_size
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/viewport.py", line 283, in render
-    surf = renpy.display.render.render(self.child, child_width, child_height, st, at)
-           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/layout.py", line 1162, in render
-    surf = render(d, width - x, rh, cst, cat)
-           ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/layout.py", line 1442, in render
-    surf = render(child, width - cxmargin - cxpadding, height - cymargin - cypadding, st, at)
-           ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/layout.py", line 1162, in render
-    surf = render(d, width - x, rh, cst, cat)
-           ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/text/text.py", line 2730, in render
-    virtual_layout = Layout(self, width, height, renders, drawable_res=False, size_only=True)
-                     ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/text/text.py", line 799, in __init__
-    self.paragraphs = self.segment(text.tokens, style, renders, text)
-                      ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/text/text.py", line 1604, in segment
-    raise Exception("Unknown text tag %r" % text)
-Exception: Unknown text tag "'name': 'disadvantage_next_attack', 'duration': 1"
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "renpy/bootstrap.py", line 376, in bootstrap
-    renpy.main.main()
-    ~~~~~~~~~~~~~~~^^
-  File "renpy/main.py", line 614, in main
-    run(restart)
-    ~~~^^^^^^^^^
-  File "renpy/main.py", line 137, in run
-    renpy.execution.run_context(True)
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
-  File "renpy/execution.py", line 1022, in run_context
-    context.run()
+  File "renpy/display/core.py", line 2757, in interact_core
+    root_widget.visit_all(lambda d: d.per_interact())
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "renpy/display/displayable.py", line 432, in visit_all
+    d.visit_all(callback, seen)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "renpy/display/displayable.py", line 432, in visit_all
+    d.visit_all(callback, seen)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "renpy/display/displayable.py", line 432, in visit_all
+    d.visit_all(callback, seen)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "renpy/display/screen.py", line 503, in visit_all
+    callback(self)
+    ~~~~~~~~^^^^^^
+  File "renpy/display/core.py", line 2757, in <lambda>
+    root_widget.visit_all(lambda d: d.per_interact())
+                                    ~~~~~~~~~~~~~~^^ 
+  File "renpy/display/screen.py", line 514, in per_interact
+    self.update()
     ~~~~~~~~~~~^^
-  File "game/test_combat.rpy", line 25, in script call
-    call start_combat(opponents_for_this_fight)
-  File "game/combat_integration.rpy", line 122, in script
-    call screen combat_encounter
-  File "game/test_combat.rpy", line 25, in script call
-    call start_combat(opponents_for_this_fight)
-  File "game/combat_integration.rpy", line 122, in script
-    call screen combat_encounter
-  File "renpy/display/error.py", line 135, in report_exception
-    renpy.game.invoke_in_new_context(
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
-        call_exception_screen,
-        ^^^^^^^^^^^^^^^^^^^^^^
-    ...<4 lines>...
-        ignore_action=ignore_action,
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    )
-    ^
-  File "renpy/game.py", line 301, in invoke_in_new_context
-    return callable(*args, **kwargs)
-           ~~~~~~~~^^^^^^^^^^^^^^^^^
-  File "renpy/display/error.py", line 44, in call_exception_screen
-    return renpy.ui.interact(mouse="screen", type="screen", suppress_overlay=True, suppress_underlay=True)
-           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/ui.py", line 304, in interact
-    rv = renpy.game.interface.interact(roll_forward=roll_forward, **kwargs)
-         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/core.py", line 2219, in interact
-    repeat, rv = self.interact_core(
-                 ~~~~~~~~~~~~~~~~~~^
-        preloads=preloads,
-        ^^^^^^^^^^^^^^^^^^
-    ...<4 lines>...
-        **kwargs,
-        ^^^^^^^^^
-    )  # type: ignore
-    ^                
-  File "renpy/display/core.py", line 2890, in interact_core
-    self.draw_screen(root_widget, fullscreen_video, (not fullscreen_video) or video_frame_drawn)
-    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/core.py", line 1380, in draw_screen
-    surftree = renpy.display.render.render_screen(
-               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
-        root_widget,
-        ^^^^^^^^^^^^
-        renpy.config.screen_width,
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^
-        renpy.config.screen_height,
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    )
-    ^
-  File "renpy/display/render.pyx", line 487, in renpy.display.render.render_screen
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/layout.py", line 899, in render
-    surf = render(child, width, height, cst, cat)
-           ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/layout.py", line 899, in render
-    surf = render(child, width, height, cst, cat)
-           ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/layout.py", line 899, in render
-    surf = render(child, width, height, cst, cat)
-           ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/screen.py", line 767, in render
-    child = renpy.display.render.render(self.child, w, h, st, at)
-            ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/layout.py", line 899, in render
-    surf = render(child, width, height, cst, cat)
-           ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/layout.py", line 1442, in render
-    surf = render(child, width - cxmargin - cxpadding, height - cymargin - cypadding, st, at)
-           ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/layout.py", line 1953, in render
-    cwidth, cheight = sizeit("c", width, height, 0, 0)
-                      ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/layout.py", line 1950, in sizeit
-    rend = renpy.display.render.render_for_size(pos_d[pos], width, height, st, at)
-           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/render.pyx", line 313, in renpy.display.render.render_for_size
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/layout.py", line 1953, in render
-    cwidth, cheight = sizeit("c", width, height, 0, 0)
-                      ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/layout.py", line 1950, in sizeit
-    rend = renpy.display.render.render_for_size(pos_d[pos], width, height, st, at)
-           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/render.pyx", line 313, in renpy.display.render.render_for_size
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/viewport.py", line 283, in render
-    surf = renpy.display.render.render(self.child, child_width, child_height, st, at)
-           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/display/layout.py", line 1162, in render
-    surf = render(d, width - x, rh, cst, cat)
-           ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/display/render.pyx", line 170, in renpy.display.render.render
-  File "renpy/display/render.pyx", line 260, in renpy.display.render.render
-  File "renpy/text/text.py", line 2730, in render
-    virtual_layout = Layout(self, width, height, renders, drawable_res=False, size_only=True)
-                     ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/text/text.py", line 799, in __init__
-    self.paragraphs = self.segment(text.tokens, style, renders, text)
-                      ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "renpy/text/text.py", line 1604, in segment
-    raise Exception("Unknown text tag %r" % text)
-Exception: Unknown text tag "'name': 'disadvantage_next_attack', 'duration': 1"
+  File "renpy/display/screen.py", line 715, in update
+    self.screen.function(**self.scope)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "game/character_sheet.rpy", line 737, in execute
+    screen discovery_menu_screen():
+  File "game/character_sheet.rpy", line 737, in execute
+    screen discovery_menu_screen():
+  File "game/character_sheet.rpy", line 741, in execute
+    frame:
+  File "game/character_sheet.rpy", line 748, in execute
+    vbox:
+  File "game/character_sheet.rpy", line 761, in execute
+    if can_search_items:
+  File "game/character_sheet.rpy", line 771, in execute
+    textbutton "Search for items (Nothing here)":
+  File "game/character_sheet.rpy", line 771, in keywords
+    textbutton "Search for items (Nothing here)":
+  File "renpy/python.py", line 1292, in py_eval
+    return py_eval_bytecode(code, globals, locals)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "renpy/python.py", line 1285, in py_eval_bytecode
+    return eval(bytecode, globals, locals)
+           ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "game/character_sheet.rpy", line 773, in <module>
+    style small_gray
+          ^^^^^^^^^^
+NameError: name 'small_gray' is not defined
 
 Windows-10-10.0.19045-SP0 AMD64
 Ren'Py 8.4.1.25072401
 Undercity 1.0
-Sat Aug  2 01:49:24 2025
+Sat Aug  2 05:31:18 2025
